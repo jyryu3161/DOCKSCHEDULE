@@ -208,6 +208,12 @@ def test_job_pagination_summary_and_search_use_full_history(admin_client):
     assert not {t['id'] for t in first}&{t['id'] for t in second}
     assert len(admin_client.get('/api/jobs?state=done').json())==1
     assert len(admin_client.get('/api/jobs?search=Library%20104').json())==1
+    page=admin_client.get('/api/jobs?include_total=true&limit=20&offset=20').json()
+    assert page['total']==106 and page['limit']==20 and page['offset']==20 and len(page['rows'])==20
+    filtered=admin_client.get('/api/jobs?include_total=true&state=done').json()
+    assert filtered['total']==1 and filtered['rows'][0]['id']==task_id
+    assert admin_client.get('/api/jobs?include_total=true&search=Library%20104').json()['total']==1
+    assert admin_client.get('/api/jobs?include_total=true&search=no-match').json()['total']==0
 
 
 def test_dispatch_failure_kills_unrecorded_worker_before_releasing_cpus(admin_client,monkeypatch):

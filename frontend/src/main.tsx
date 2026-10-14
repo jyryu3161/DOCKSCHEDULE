@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -32,20 +32,25 @@ import "./style.css";
 function useLoad<T = any>(path: string, interval = 0) {
   const [data, setData] = useState<T | null>(null),
     [error, setError] = useState("");
+  const requestId = useRef(0);
   const reload = useCallback(async () => {
+    const id = ++requestId.current;
     try {
-      setData(await api<T>(path));
+      const result = await api<T>(path);
+      if (id !== requestId.current) return;
+      setData(result);
       setError("");
     } catch (e) {
-      setError((e as Error).message);
+      if (id === requestId.current) setError((e as Error).message);
     }
   }, [path]);
   useEffect(() => {
     reload();
-    if (interval) {
-      const t = setInterval(reload, interval);
-      return () => clearInterval(t);
-    }
+    const timer = interval ? setInterval(reload, interval) : undefined;
+    return () => {
+      ++requestId.current;
+      clearInterval(timer);
+    };
   }, [reload, interval]);
   return { data, error, reload };
 }
@@ -393,18 +398,37 @@ function App() {
   );
 }
 
+const JOB_PAGE_SIZES = [10, 20, 50, 100, 200];
+
 function Dashboard({ user }: { user: User }) {
   const [filter, setFilter] = useState("all"),
     [search, setSearch] = useState(""),
     [page, setPage] = useState(1);
-  const jobs = useLoad<Job[]>(
-      `/jobs?limit=50&offset=${(page - 1) * 50}&state=${filter}&search=${encodeURIComponent(search)}`,
+  const [pageSize, setPageSize] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem("ds.jobs.pageSize"));
+      return JOB_PAGE_SIZES.includes(saved) ? saved : 50;
+    } catch {
+      return 50;
+    }
+  });
+  const jobs = useLoad<{ rows: Job[]; total: number }>(
+      `/jobs?include_total=true&limit=${pageSize}&offset=${(page - 1) * pageSize}&state=${filter}&search=${encodeURIComponent(search)}`,
       4000,
     ),
     resources = useLoad("/settings", 4000),
     summary = useLoad("/jobs/summary", 4000);
-  useEffect(() => setPage(1), [filter, search]);
-  const rows = jobs.data || [];
+  useEffect(() => {
+    try {
+      localStorage.setItem("ds.jobs.pageSize", String(pageSize));
+    } catch {}
+  }, [pageSize]);
+  const rows = jobs.data?.rows || [];
+  const total = jobs.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  useEffect(() => {
+    if (jobs.data && page > totalPages) setPage(totalPages);
+  }, [jobs.data, page, totalPages]);
   return (
     <>
       <div className="page-heading">
@@ -471,20 +495,45 @@ function Dashboard({ user }: { user: User }) {
               <button
                 key={k}
                 className={filter === k ? "selected" : ""}
-                onClick={() => setFilter(k)}
+                onClick={() => {
+                  setFilter(k);
+                  setPage(1);
+                }}
               >
                 {v}
               </button>
             ))}
           </div>
-          <label className="search">
-            <Search size={16} />
-            <input
-              placeholder="작업 이름 검색"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </label>
+          <div className="list-controls">
+            <label className="page-size">
+              <span>페이지당 표시</span>
+              <select
+                aria-label="페이지당 표시"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                {JOB_PAGE_SIZES.map((count) => (
+                  <option key={count} value={count}>
+                    {count}개
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="search">
+              <Search size={16} />
+              <input
+                placeholder="작업 이름 검색"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </label>
+          </div>
         </div>
         {rows.length ? (
           <div className="table-wrap">
@@ -554,7 +603,7 @@ function Dashboard({ user }: { user: User }) {
             }
           />
         )}
-        <div className="pagination">
+        <div className="pagination jobs-pagination">
           <button
             className="secondary small"
             disabled={page === 1}
@@ -562,10 +611,17 @@ function Dashboard({ user }: { user: User }) {
           >
             이전
           </button>
-          <span>{page} 페이지</span>
+          <span>
+            전체 {total.toLocaleString()}개 ·{" "}
+            {rows.length ? ((page - 1) * pageSize + 1).toLocaleString() : 0}–
+            {rows.length
+              ? ((page - 1) * pageSize + rows.length).toLocaleString()
+              : 0}
+            개 · {page} / {totalPages} 페이지
+          </span>
           <button
             className="secondary small"
-            disabled={rows.length < 50}
+            disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
           >
             다음
@@ -740,18 +796,26 @@ function NewJob() {
     try {
       const p = await post("/uploads/" + id + "/preview", options);
       setPreview(p);
-      setMapping((m) => ({
-        ...m,
-        cid_column: p.columns.includes(m.cid_column)
-          ? m.cid_column
-          : p.columns.find((c: string) => /^(cid|id|compound_?id)$/i.test(c)) ||
-            p.columns[0],
-        smiles_column: p.columns.includes(m.smiles_column)
+      setMapping((m) => {
+        const smiles = p.columns.includes(m.smiles_column)
           ? m.smiles_column
           : p.columns.find((c: string) => /smiles/i.test(c)) ||
             p.columns[1] ||
-            "",
-      }));
+            "";
+        const cid =
+          p.columns.includes(m.cid_column) && m.cid_column !== smiles
+            ? m.cid_column
+            : p.columns.find(
+                (c: string) =>
+                  c !== smiles &&
+                  /^(cid|id|compoundid|catalogid|catalogueid|enamineid)$/i.test(
+                    c.replace(/[\s_-]+/g, ""),
+                  ),
+              ) ||
+              p.columns.find((c: string) => c !== smiles) ||
+              "";
+        return { ...m, cid_column: cid, smiles_column: smiles };
+      });
     } catch (e) {
       setPreview(null);
       setError((e as Error).message);
@@ -1215,9 +1279,15 @@ function NewJob() {
             </div>
             {preview && (
               <>
+                {preview.warnings?.map((warning: string) => (
+                  <p className="hint" key={warning}>
+                    {warning}
+                  </p>
+                ))}
                 <div className="input-grid">
                   <Field label="CID 컬럼">
                     <select
+                      aria-label="CID 컬럼"
                       value={mapping.cid_column}
                       onChange={(e) =>
                         setMapping({ ...mapping, cid_column: e.target.value })
@@ -1230,6 +1300,7 @@ function NewJob() {
                   </Field>
                   <Field label="SMILES 컬럼">
                     <select
+                      aria-label="SMILES 컬럼"
                       value={mapping.smiles_column}
                       onChange={(e) =>
                         setMapping({

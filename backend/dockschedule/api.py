@@ -361,8 +361,9 @@ def job_summary(u=Depends(approved), db=Depends(get_db)):
 
 @app.get('/api/jobs')
 def jobs(limit: int = Query(default=100, ge=1, le=200), offset: int = Query(default=0, ge=0),
-         search: str = '', state: str = 'all', u=Depends(approved), db=Depends(get_db)):
-    q = select(Task).order_by(Task.created_at.desc(), Task.id).offset(offset).limit(limit)
+         search: str = '', state: str = 'all', include_total: bool = False,
+         u=Depends(approved), db=Depends(get_db)):
+    q = select(Task)
     if u.role != 'admin':
         q = q.where(Task.owner_id == u.id)
     if search:
@@ -371,7 +372,9 @@ def jobs(limit: int = Query(default=100, ge=1, le=200), offset: int = Query(defa
         q = q.where(Task.status.in_(['queued', *ACTIVE]))
     elif state == 'done':
         q = q.where(Task.status.in_(FINISHED))
-    return [task_json(t, db) for t in db.scalars(q)]
+    total = db.scalar(select(func.count()).select_from(q.subquery())) if include_total else None
+    rows = [task_json(t, db) for t in db.scalars(q.order_by(Task.created_at.desc(), Task.id).offset(offset).limit(limit))]
+    return dict(rows=rows, total=total, limit=limit, offset=offset) if include_total else rows
 
 
 @app.get('/api/jobs/{task_id}')

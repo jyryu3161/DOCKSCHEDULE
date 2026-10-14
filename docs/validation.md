@@ -6,7 +6,7 @@
 
 | 검증 | 결과 |
 | --- | --- |
-| Python 테스트 | 19개 통과. 가입·승인·정지, CSRF, 자료 소유권, 큐 자원 불변 조건, 재시작 체크포인트, 파일 용량 집계, 보존 기간, 목록 페이지 조회, CSV quoting·중복 CID·실패 행, PDB model·chain·insertion·비표준 잔기 포함 |
+| Python 테스트 | 27개 통과. 가입·승인·정지, CSRF, 자료 소유권, 큐 자원 불변 조건, 재시작 체크포인트, 파일 용량 집계, 보존 기간, 목록 페이지 조회·필터별 전체 개수, Excel sep 안내·빈/중복 헤더·CSV quoting·중복 CID·실패 행, PDB model·chain·insertion·비표준 잔기 포함 |
 | 실제 화학 계산 | 1L83에서 SEQRES 결손 A163/A164 복구, 수소와 rigid receptor PDBQT 준비, RDKit 최소화와 QuickVina 실행, conformer 중 최상 pose 선택, SDF 입체화학 보존 통과 |
 | 비표준 잔기 | PDB MODRES에 근거한 아미노산 치환을 실제 전처리로 검증. 알 수 없는 ATOM 잔기를 일반 리간드처럼 조용히 삭제하지 않음 |
 | 유지 성분 | 1L83의 benzene을 명시적으로 유지한 전처리 통과. 대체 위치가 있는 유지 성분은 occupancy에 따라 하나만 선택 |
@@ -16,7 +16,7 @@
 | 취소 | 실행 중 하위 계산 종료, 완료한 첫 화합물 보존, CPU 예약 반환 확인 |
 | 백업·복원 | 운영 백업을 별도 PostgreSQL DB와 임시 디렉터리에 복원. users/tasks/compounds 행 수 및 파일 81개 해시 일치. 비공개 설정 파일 권한 600 확인 |
 | 접근 제한 | 운영 IP:port에서 HTTP 200. 허용하지 않은 Docker source에서 Nginx HTTP 403, 위조 X-Forwarded-For도 HTTP 403 |
-| 브라우저 | Chromium으로 로그인, 대시보드, sequence→structure 및 실제 structure 클릭→sequence, 좌표/grid, pose·affinity, 관리자 설정, 모바일 화면·로그아웃 검증 통과 |
+| 브라우저 | Chromium 3개 시나리오 통과. Excel CSV 업로드 미리보기와 Catalog ID 자동 선택, 페이지당 표시 개수·설정 저장·마지막 페이지, 로그인, 대시보드, sequence→structure 및 실제 structure 클릭→sequence, 좌표/grid, pose·affinity, 관리자 설정, 모바일 화면·로그아웃 검증 |
 | 배포 | PostgreSQL/Redis/API health 정상, scheduler heartbeat 정상. DB와 Redis는 호스트 포트 미공개 |
 
 `npm --prefix frontend run build`도 통과했다. Python 테스트에는 Starlette의 향후 httpx 연동 변경을 알리는 deprecation warning 1개가 남아 있다. 현재 테스트 실패는 없다.

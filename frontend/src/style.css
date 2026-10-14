@@ -407,6 +407,33 @@ main {
   gap: 10px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.list-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.page-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.page-size select {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.jobs-pagination {
+  flex-wrap: wrap;
+}
+.jobs-pagination span {
+  flex: 1;
+  min-width: 0;
 }
 .tabs {
   display: flex;
