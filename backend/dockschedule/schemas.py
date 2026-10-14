@@ -58,7 +58,7 @@ class ResourceSettings(BaseModel):
     cpu_budget: int = Field(ge=1, le=4096)
     max_students: int = Field(ge=1, le=128)
     default_cpus: int = Field(ge=1, le=4096)
-    max_compounds: int = Field(ge=1, le=20000)
+    max_compounds: int = Field(ge=1, le=100000)
     max_conformers: int = Field(ge=1, le=100)
     max_exhaustiveness: int = Field(ge=1, le=1024)
     max_pending_per_user: int = Field(ge=1, le=100)

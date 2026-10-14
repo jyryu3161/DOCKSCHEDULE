@@ -24,7 +24,7 @@ def config():
 
 
 DEFAULT_SETTINGS = dict(cpu_budget=56, max_students=8, default_cpus=4,
-                        max_compounds=20000, max_conformers=10, max_exhaustiveness=64,
+                        max_compounds=100000, max_conformers=10, max_exhaustiveness=64,
                         max_pending_per_user=3, compound_timeout=600, preparation_timeout=1800,
                         max_retries=1, storage_limit_gb=200, user_storage_limit_gb=10,
                         retention_days=0, paused=False)

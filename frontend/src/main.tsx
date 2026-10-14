@@ -1203,7 +1203,7 @@ function NewJob() {
               <small>
                 학생당 최대{" "}
                 {settings.data?.values.max_compounds.toLocaleString() ||
-                  "20,000"}
+                  "100,000"}
                 개
               </small>
               <input
