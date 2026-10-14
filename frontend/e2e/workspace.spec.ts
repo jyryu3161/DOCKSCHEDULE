@@ -11,9 +11,7 @@ test("login, dashboard, linked residue selection, grid and pose viewer", async (
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "실습 공간에 로그인" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "로그인" })).toBeVisible();
   mkdirSync("../test-results/screenshots", { recursive: true });
   await page.screenshot({
     path: "../test-results/screenshots/login.png",
@@ -76,7 +74,7 @@ test("login, dashboard, linked residue selection, grid and pose viewer", async (
   });
   await page.goto("/#admin");
   await expect(
-    page.getByRole("heading", { name: "실습 공간 관리" }),
+    page.getByRole("heading", { name: "사용자 및 자원 관리" }),
   ).toBeVisible();
   await expect(page.getByLabel("전체 계산 CPU 한도")).toBeVisible();
   await page.screenshot({
@@ -99,7 +97,5 @@ test("login, dashboard, linked residue selection, grid and pose viewer", async (
     fullPage: true,
   });
   await page.getByRole("button", { name: "로그아웃", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "실습 공간에 로그인" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "로그인" })).toBeVisible();
 });

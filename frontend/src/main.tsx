@@ -125,16 +125,16 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
           <FlaskConical /> DOCK<span>SCHEDULE</span>
         </div>
         <div>
-          <span className="eyebrow">COMPUTATIONAL DRUG DISCOVERY</span>
+          <span className="eyebrow">QUICKVINA 2.1</span>
           <h1>
-            분자에서 시작하는
+            Docking 기반의
             <br />
-            새로운 가능성.
+            Virtual Screening
           </h1>
           <p>
-            구조를 준비하고, 결합 부위를 탐색하고,
+            단백질 구조와 화합물 라이브러리를 이용해
             <br />
-            화합물 라이브러리의 가능성을 확인하세요.
+            분자 도킹을 실행하고 결합 점수와 구조를 확인합니다.
           </p>
           <div className="molecule-art">
             <i />
@@ -143,19 +143,19 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
             <i />
             <i />
             <i />
-            <span>Virtual Screening Lab</span>
+            <span>Protein–Ligand Docking</span>
           </div>
         </div>
-        <small>QUICKVINA · CLASSROOM WORKSPACE</small>
+        <small>단백질 전처리 · Docking · 결과 조회</small>
       </div>
       <div className="login-form">
         <div className="login-card">
-          <span className="eyebrow">WELCOME TO THE LAB</span>
-          <h2>{register ? "연구를 시작할 준비" : "실습 공간에 로그인"}</h2>
+          <span className="eyebrow">DOCKSCHEDULE</span>
+          <h2>{register ? "회원가입" : "로그인"}</h2>
           <p className="muted">
             {register
-              ? "간단한 가입 후 관리자의 승인을 기다려 주세요."
-              : "승인된 계정으로 virtual screening을 시작하세요."}
+              ? "가입 후 관리자 승인이 필요합니다."
+              : "승인된 계정으로 로그인하세요."}
           </p>
           {message && <div className="notice">{message}</div>}
           <ErrorBox text={error} />
@@ -230,7 +230,7 @@ function App() {
     return (
       <div className="boot">
         <FlaskConical />
-        <p>실습 공간을 불러오는 중…</p>
+        <p>플랫폼을 불러오는 중…</p>
       </div>
     );
   if (!user) return <Login onLogin={setUser} />;
@@ -261,7 +261,7 @@ function App() {
           <FlaskConical size={25} />{" "}
           <div>
             DOCK<span>SCHEDULE</span>
-            <small>VIRTUAL SCREENING LAB</small>
+            <small>VIRTUAL SCREENING</small>
           </div>
         </a>
         <span className="nav-label">WORKSPACE</span>
@@ -288,14 +288,10 @@ function App() {
         </nav>
         <div className="sidebar-note">
           <div>
-            <Activity size={16} /> CPU DOCKING
+            <Activity size={16} /> QUICKVINA 2.1
           </div>
-          <p>
-            한 번의 탐색,
-            <br />
-            수많은 분자의 가능성.
-          </p>
-          <small>Powered by QuickVina 2.1</small>
+          <p>CPU 기반 분자 도킹</p>
+          <small>화합물당 최상 pose 1개</small>
         </div>
         <div className="profile">
           <div className="avatar">{user.name.slice(0, 1)}</div>
@@ -313,7 +309,7 @@ function App() {
       <main>
         <header className="topbar">
           <div>
-            Workspace <ChevronRight size={13} />{" "}
+            DOCKSCHEDULE <ChevronRight size={13} />{" "}
             <b>
               {isAdmin
                 ? "관리자 설정"
@@ -325,7 +321,7 @@ function App() {
             </b>
           </div>
           <span className="campus">
-            <span /> Campus workspace
+            <span /> 학내 전용
           </span>
           <div className="mobile-account">
             <button
@@ -433,9 +429,9 @@ function Dashboard({ user }: { user: User }) {
     <>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">YOUR DISCOVERY WORKSPACE</span>
+          <span className="eyebrow">VIRTUAL SCREENING</span>
           <h1>Screening 대시보드</h1>
-          <p>실험의 진행 상황부터 새로운 발견까지, 한눈에 확인하세요.</p>
+          <p>PDB 전처리와 docking 작업의 진행 상태 및 결과를 확인합니다.</p>
         </div>
         <button className="primary" onClick={() => go("new")}>
           <Plus size={18} />새 Screening
@@ -456,7 +452,7 @@ function Dashboard({ user }: { user: User }) {
           icon={<Activity />}
           label="실행 중"
           value={summary.data?.running ?? 0}
-          caption="결과를 계산하고 있어요"
+          caption="실행 중인 계산 작업"
         />
         <Stat
           icon={<CheckCircle2 />}
@@ -594,11 +590,11 @@ function Dashboard({ user }: { user: User }) {
           </div>
         ) : (
           <Empty
-            title="아직 Screening 작업이 없습니다"
-            text="PDB 구조와 화합물 library를 준비하고 첫 작업을 시작하세요."
+            title="등록된 Screening 작업이 없습니다"
+            text="새 작업에서 PDB와 화합물 library를 업로드하고 docking 조건을 설정하세요."
             action={
               <button className="secondary" onClick={() => go("new")}>
-                첫 Screening 만들기 <ArrowRight size={15} />
+                Screening 작업 생성 <ArrowRight size={15} />
               </button>
             }
           />
@@ -894,9 +890,12 @@ function NewJob() {
     <>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">START A NEW EXPERIMENT</span>
+          <span className="eyebrow">SCREENING SETUP</span>
           <h1>새 Screening</h1>
-          <p>표적 구조와 library를 준비하고 결합 가능성을 탐색하세요.</p>
+          <p>
+            PDB와 화합물 library를 업로드하고 결합 위치와 docking 조건을
+            설정합니다.
+          </p>
         </div>
         <button className="secondary" onClick={() => go("dashboard")}>
           <ArrowLeft size={16} />
@@ -1840,9 +1839,9 @@ function Admin() {
     <>
       <div className="page-heading">
         <div>
-          <span className="eyebrow">LAB ADMINISTRATION</span>
-          <h1>실습 공간 관리</h1>
-          <p>학생을 승인하고 계산 자원을 배분하세요.</p>
+          <span className="eyebrow">ADMINISTRATION</span>
+          <h1>사용자 및 자원 관리</h1>
+          <p>가입 승인, CPU 배분, 작업과 저장 공간 한도를 설정합니다.</p>
         </div>
         <span className="admin-tag">
           <ShieldCheck size={16} />
@@ -1856,7 +1855,7 @@ function Admin() {
           icon={<Users />}
           label="승인 대기"
           value={users.data?.filter((u) => u.status === "pending").length || 0}
-          caption="새로운 학생 신청"
+          caption="관리자 승인이 필요한 가입 신청"
         />
         <Stat
           icon={<Cpu />}
