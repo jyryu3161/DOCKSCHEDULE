@@ -1,0 +1,11 @@
+{
+  "rows": 800000,
+  "students": 40,
+  "rows_per_job": 20000,
+  "parse_seconds": 0.03341745026409626,
+  "insert_seconds": 54.032609526999295,
+  "first_page_seconds": 0.006725910119712353,
+  "export_seconds": 0.7499919086694717,
+  "export_lines": 20001,
+  "rss_mb": 89.94140625
+}

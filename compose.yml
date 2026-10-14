@@ -1,0 +1,74 @@
+name: dockschedule
+x-app: &app
+  build: .
+  image: dockschedule-app:local
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://dockschedule:${POSTGRES_PASSWORD}@db:5432/dockschedule
+    REDIS_URL: redis://redis:6379/0
+    STORAGE_ROOT: /app/storage
+    QVINA_BINARY: /app/tools/qvina2.1
+  volumes:
+    - ./storage:/app/storage
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dockschedule
+      POSTGRES_USER: dockschedule
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U dockschedule']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'yes']
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  api:
+    <<: *app
+    command: [sh, -c, 'alembic upgrade head && exec uvicorn dockschedule.api:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips "*"']
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://localhost:8000/api/health", timeout=3)']
+      interval: 5s
+      timeout: 4s
+      retries: 30
+  scheduler:
+    <<: *app
+    command: [python, -m, dockschedule.scheduler]
+    depends_on:
+      api:
+        condition: service_healthy
+    stop_grace_period: 30s
+  web:
+    build: frontend
+    environment:
+      ALLOWED_NETWORKS: ${ALLOWED_NETWORKS:-127.0.0.0/8,::1/128}
+    ports:
+      - '${BIND_IP:-127.0.0.1}:${APP_PORT:-8890}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  database:
+  redis:

@@ -1,0 +1,9 @@
+{
+  "cid": "6",
+  "cpus": 4,
+  "status": "succeeded",
+  "seconds": 12.249172211624682,
+  "python_maxrss_mib": 122.83203125,
+  "child_process_maxrss_mib": 122.83203125,
+  "note": "Single compound probe; child high-water RSS includes fork inheritance and is not simultaneous total memory."
+}

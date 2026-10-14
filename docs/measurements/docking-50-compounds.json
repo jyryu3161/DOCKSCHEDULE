@@ -1,0 +1,1632 @@
+{
+  "source": "RDKit bundled NCI first_5K.smi; 8–35 heavy atoms, <=8 rotatable bonds",
+  "receptor": "1L83",
+  "preparation_seconds": 1.3308105636388063,
+  "compounds": 50,
+  "runs": [
+    {
+      "cpu": 1,
+      "results": [
+        {
+          "cid": "1",
+          "smiles": "CC1=CC(=O)C=CC1=O",
+          "status": "succeeded",
+          "affinity": -5.9,
+          "seconds": 4.787826934829354,
+          "artifact_bytes": 3625
+        },
+        {
+          "cid": "2",
+          "smiles": "S(SC1=NC2=CC=CC=C2S1)C3=NC4=C(S3)C=CC=C4",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 22.00561984349042,
+          "artifact_bytes": 6937
+        },
+        {
+          "cid": "3",
+          "smiles": "OC1=C(Cl)C=C(C=C1[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 12.250626382417977,
+          "artifact_bytes": 4697
+        },
+        {
+          "cid": "4",
+          "smiles": "[O-][N+](=O)C1=CNC(=N)S1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 5.905961315147579,
+          "artifact_bytes": 3391
+        },
+        {
+          "cid": "5",
+          "smiles": "NC1=CC2=C(C=C1)C(=O)C3=C(C=CC=C3)C2=O",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 11.267023977823555,
+          "artifact_bytes": 6424
+        },
+        {
+          "cid": "6",
+          "smiles": "OC(=O)C1=C(C=CC=C1)C2=C3C=CC(=O)C(=C3OC4=C2C=CC(=C4Br)O)Br",
+          "status": "succeeded",
+          "affinity": 6.9,
+          "seconds": 41.692670384421945,
+          "artifact_bytes": 9275
+        },
+        {
+          "cid": "7",
+          "smiles": "CN(C)C1=C(Cl)C(=O)C2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 9.838044503703713,
+          "artifact_bytes": 6143
+        },
+        {
+          "cid": "8",
+          "smiles": "CC1=C(C2=C(C=C1)C(=O)C3=CC=CC=C3C2=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 13.911157447844744,
+          "artifact_bytes": 7074
+        },
+        {
+          "cid": "9",
+          "smiles": "CC(=NO)C(C)=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 7.5409512873739,
+          "artifact_bytes": 3946
+        },
+        {
+          "cid": "10",
+          "smiles": "C1=CC=C(C=C1)P(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.5,
+          "seconds": 21.54033834952861,
+          "artifact_bytes": 7820
+        },
+        {
+          "cid": "11",
+          "smiles": "CC(C)(C)C1=C(O)C=C(C(=C1)O)C(C)(C)C",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 17.015687665902078,
+          "artifact_bytes": 8379
+        },
+        {
+          "cid": "12",
+          "smiles": "CC1=NN(C(=O)C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 8.974203370511532,
+          "artifact_bytes": 5362
+        },
+        {
+          "cid": "13",
+          "smiles": "NC1=CC=NC2=C1C=CC(=C2)Cl",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 7.567165886051953,
+          "artifact_bytes": 4778
+        },
+        {
+          "cid": "14",
+          "smiles": "CCCCCC[CH]1CCCCN1",
+          "status": "succeeded",
+          "affinity": -4.1,
+          "seconds": 14.375192310661077,
+          "artifact_bytes": 7451
+        },
+        {
+          "cid": "15",
+          "smiles": "O=CC1=C2C=CC=CC2=CC3=C1C=CC=C3",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 9.180333582684398,
+          "artifact_bytes": 6162
+        },
+        {
+          "cid": "16",
+          "smiles": "BrN1C(=O)CCC1=O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 4.31869285646826,
+          "artifact_bytes": 3041
+        },
+        {
+          "cid": "18",
+          "smiles": "C(COC1=C(C=CC=C1)C2=CC=CC=C2)OC3=CC=CC=C3C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -3.0,
+          "seconds": 42.069093774072826,
+          "artifact_bytes": 11437
+        },
+        {
+          "cid": "20",
+          "smiles": "CC(=O)NC1=NC2=C(C=C1)C(=CC=N2)O",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 13.224649555049837,
+          "artifact_bytes": 5923
+        },
+        {
+          "cid": "21",
+          "smiles": "CC1=C2C=CC(=NC2=NC(=C1)O)N",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 8.775068279355764,
+          "artifact_bytes": 5484
+        },
+        {
+          "cid": "22",
+          "smiles": "CCOC(=O)C1=CN=C2N=C(N)C=CC2=C1O",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 23.895958566106856,
+          "artifact_bytes": 6947
+        },
+        {
+          "cid": "23",
+          "smiles": "CC1=CC(=NC=C1)N=CC2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 20.03292240295559,
+          "artifact_bytes": 6248
+        },
+        {
+          "cid": "24",
+          "smiles": "C[N+](C)(C)CC1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 9.580518936738372,
+          "artifact_bytes": 5894
+        },
+        {
+          "cid": "25",
+          "smiles": "C[N+](C)(C)C(=O)C1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 8.902167151682079,
+          "artifact_bytes": 5818
+        },
+        {
+          "cid": "26",
+          "smiles": "ICCC(C1=CC=CC=C1)(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": 0.1,
+          "seconds": 29.478516452014446,
+          "artifact_bytes": 9308
+        },
+        {
+          "cid": "27",
+          "smiles": "CC1=CC(=C(C[N+](C)(C)C)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 11.375720301643014,
+          "artifact_bytes": 7673
+        },
+        {
+          "cid": "28",
+          "smiles": "C[C](O)(CC(O)=O)C1=CC=C(C=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 19.060368702746928,
+          "artifact_bytes": 6676
+        },
+        {
+          "cid": "29",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(Cl)C=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 12.575307119637728,
+          "artifact_bytes": 6340
+        },
+        {
+          "cid": "30",
+          "smiles": "ON=CC1=CC=C(O)C=C1",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 8.991541949100792,
+          "artifact_bytes": 4310
+        },
+        {
+          "cid": "31",
+          "smiles": "CC1=CC(=C(N)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -5.0,
+          "seconds": 6.26245847158134,
+          "artifact_bytes": 5243
+        },
+        {
+          "cid": "32",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(C=C2)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 16.18963373824954,
+          "artifact_bytes": 6939
+        },
+        {
+          "cid": "33",
+          "smiles": "CC(O)(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 14.536762526258826,
+          "artifact_bytes": 6699
+        },
+        {
+          "cid": "34",
+          "smiles": "ON=CC1=CC(=CC=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 10.376559166237712,
+          "artifact_bytes": 4627
+        },
+        {
+          "cid": "35",
+          "smiles": "OC1=C2C=CC(=CC2=NC=C1[N+]([O-])=O)Cl",
+          "status": "succeeded",
+          "affinity": -5.1,
+          "seconds": 10.102105617523193,
+          "artifact_bytes": 5233
+        },
+        {
+          "cid": "36",
+          "smiles": "CC1=CC=CC2=NC=C(C)C(=C12)Cl",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 6.524845337495208,
+          "artifact_bytes": 5326
+        },
+        {
+          "cid": "37",
+          "smiles": "CCC(CC)([CH](OC(N)=O)C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -1.9,
+          "seconds": 27.49921847973019,
+          "artifact_bytes": 10188
+        },
+        {
+          "cid": "38",
+          "smiles": "ON=C(CC1=CC=CC=C1)[CH](C#N)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 25.408598388545215,
+          "artifact_bytes": 7780
+        },
+        {
+          "cid": "39",
+          "smiles": "O[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 22.899533328600228,
+          "artifact_bytes": 6730
+        },
+        {
+          "cid": "40",
+          "smiles": "COC1=CC=C(CC2=CC=C(OC)C=C2)C=C1",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 47.787886508740485,
+          "artifact_bytes": 7485
+        },
+        {
+          "cid": "41",
+          "smiles": "CN(C)[CH](C1=CC=CC=C1)C2=C(C)C=CC=C2",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 14.571479711681604,
+          "artifact_bytes": 7950
+        },
+        {
+          "cid": "42",
+          "smiles": "COC1=CC(=C(N)C(=C1)[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 14.05065661109984,
+          "artifact_bytes": 5733
+        },
+        {
+          "cid": "43",
+          "smiles": "NN=C(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 14.97725631389767,
+          "artifact_bytes": 6451
+        },
+        {
+          "cid": "44",
+          "smiles": "COC1=CC=C(C=C1)C=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 9.825654256157577,
+          "artifact_bytes": 4810
+        },
+        {
+          "cid": "45",
+          "smiles": "C1=CC=C(C=C1)C(N=C(C2=CC=CC=C2)C3=CC=CC=C3)C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": 0.7,
+          "seconds": 36.22587145213038,
+          "artifact_bytes": 10954
+        },
+        {
+          "cid": "46",
+          "smiles": "C1=CC=C(C=C1)N=C(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 21.76104403473437,
+          "artifact_bytes": 8074
+        },
+        {
+          "cid": "47",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 14.558086717501283,
+          "artifact_bytes": 7287
+        },
+        {
+          "cid": "49",
+          "smiles": "OC(=O)[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 18.545053833164275,
+          "artifact_bytes": 7272
+        },
+        {
+          "cid": "50",
+          "smiles": "CCC1=C(N)C=C(C)N=C1",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 6.9963967353105545,
+          "artifact_bytes": 5108
+        },
+        {
+          "cid": "51",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)OC4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -0.7,
+          "seconds": 31.096179898828268,
+          "artifact_bytes": 9462
+        },
+        {
+          "cid": "52",
+          "smiles": "N#C[CH](C(C1=CC=CC=C1)C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.6,
+          "seconds": 26.819287077523768,
+          "artifact_bytes": 8945
+        },
+        {
+          "cid": "54",
+          "smiles": "CC(=O)[CH]1CC2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -5.7,
+          "seconds": 9.186159115284681,
+          "artifact_bytes": 5360
+        }
+      ],
+      "total_seconds": 826.3340566102415
+    },
+    {
+      "cpu": 2,
+      "results": [
+        {
+          "cid": "1",
+          "smiles": "CC1=CC(=O)C=CC1=O",
+          "status": "succeeded",
+          "affinity": -5.9,
+          "seconds": 2.729392671957612,
+          "artifact_bytes": 3625
+        },
+        {
+          "cid": "2",
+          "smiles": "S(SC1=NC2=CC=CC=C2S1)C3=NC4=C(S3)C=CC=C4",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 11.996842802502215,
+          "artifact_bytes": 6937
+        },
+        {
+          "cid": "3",
+          "smiles": "OC1=C(Cl)C=C(C=C1[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 6.795997776091099,
+          "artifact_bytes": 4697
+        },
+        {
+          "cid": "4",
+          "smiles": "[O-][N+](=O)C1=CNC(=N)S1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 3.345407549291849,
+          "artifact_bytes": 3391
+        },
+        {
+          "cid": "5",
+          "smiles": "NC1=CC2=C(C=C1)C(=O)C3=C(C=CC=C3)C2=O",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 5.916474185883999,
+          "artifact_bytes": 6424
+        },
+        {
+          "cid": "6",
+          "smiles": "OC(=O)C1=C(C=CC=C1)C2=C3C=CC(=O)C(=C3OC4=C2C=CC(=C4Br)O)Br",
+          "status": "succeeded",
+          "affinity": 6.9,
+          "seconds": 22.846318155527115,
+          "artifact_bytes": 9275
+        },
+        {
+          "cid": "7",
+          "smiles": "CN(C)C1=C(Cl)C(=O)C2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 5.314689024351537,
+          "artifact_bytes": 6143
+        },
+        {
+          "cid": "8",
+          "smiles": "CC1=C(C2=C(C=C1)C(=O)C3=CC=CC=C3C2=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 7.566553508862853,
+          "artifact_bytes": 7074
+        },
+        {
+          "cid": "9",
+          "smiles": "CC(=NO)C(C)=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 3.998586991801858,
+          "artifact_bytes": 3946
+        },
+        {
+          "cid": "10",
+          "smiles": "C1=CC=C(C=C1)P(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.5,
+          "seconds": 11.627840009517968,
+          "artifact_bytes": 7820
+        },
+        {
+          "cid": "11",
+          "smiles": "CC(C)(C)C1=C(O)C=C(C(=C1)O)C(C)(C)C",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 8.743110281415284,
+          "artifact_bytes": 8379
+        },
+        {
+          "cid": "12",
+          "smiles": "CC1=NN(C(=O)C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 5.059409321285784,
+          "artifact_bytes": 5362
+        },
+        {
+          "cid": "13",
+          "smiles": "NC1=CC=NC2=C1C=CC(=C2)Cl",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 3.943509199656546,
+          "artifact_bytes": 4778
+        },
+        {
+          "cid": "14",
+          "smiles": "CCCCCC[CH]1CCCCN1",
+          "status": "succeeded",
+          "affinity": -4.1,
+          "seconds": 7.240827671252191,
+          "artifact_bytes": 7451
+        },
+        {
+          "cid": "15",
+          "smiles": "O=CC1=C2C=CC=CC2=CC3=C1C=CC=C3",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 4.908712729811668,
+          "artifact_bytes": 6162
+        },
+        {
+          "cid": "16",
+          "smiles": "BrN1C(=O)CCC1=O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 2.434009714052081,
+          "artifact_bytes": 3041
+        },
+        {
+          "cid": "18",
+          "smiles": "C(COC1=C(C=CC=C1)C2=CC=CC=C2)OC3=CC=CC=C3C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -3.0,
+          "seconds": 21.915688132867217,
+          "artifact_bytes": 11437
+        },
+        {
+          "cid": "20",
+          "smiles": "CC(=O)NC1=NC2=C(C=C1)C(=CC=N2)O",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 7.5289427023380995,
+          "artifact_bytes": 5923
+        },
+        {
+          "cid": "21",
+          "smiles": "CC1=C2C=CC(=NC2=NC(=C1)O)N",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 4.691157794557512,
+          "artifact_bytes": 5484
+        },
+        {
+          "cid": "22",
+          "smiles": "CCOC(=O)C1=CN=C2N=C(N)C=CC2=C1O",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 11.772745764814317,
+          "artifact_bytes": 6947
+        },
+        {
+          "cid": "23",
+          "smiles": "CC1=CC(=NC=C1)N=CC2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 7.23574726562947,
+          "artifact_bytes": 6248
+        },
+        {
+          "cid": "24",
+          "smiles": "C[N+](C)(C)CC1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 5.015455953776836,
+          "artifact_bytes": 5894
+        },
+        {
+          "cid": "25",
+          "smiles": "C[N+](C)(C)C(=O)C1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 4.560319246724248,
+          "artifact_bytes": 5818
+        },
+        {
+          "cid": "26",
+          "smiles": "ICCC(C1=CC=CC=C1)(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": 0.1,
+          "seconds": 15.919607398100197,
+          "artifact_bytes": 9308
+        },
+        {
+          "cid": "27",
+          "smiles": "CC1=CC(=C(C[N+](C)(C)C)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 5.922150366939604,
+          "artifact_bytes": 7673
+        },
+        {
+          "cid": "28",
+          "smiles": "C[C](O)(CC(O)=O)C1=CC=C(C=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 10.619945054873824,
+          "artifact_bytes": 6676
+        },
+        {
+          "cid": "29",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(Cl)C=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 7.25490409694612,
+          "artifact_bytes": 6340
+        },
+        {
+          "cid": "30",
+          "smiles": "ON=CC1=CC=C(O)C=C1",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 4.540355831384659,
+          "artifact_bytes": 4310
+        },
+        {
+          "cid": "31",
+          "smiles": "CC1=CC(=C(N)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -5.0,
+          "seconds": 3.475566955283284,
+          "artifact_bytes": 5243
+        },
+        {
+          "cid": "32",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(C=C2)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 8.894524150528014,
+          "artifact_bytes": 6939
+        },
+        {
+          "cid": "33",
+          "smiles": "CC(O)(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 7.820538505911827,
+          "artifact_bytes": 6699
+        },
+        {
+          "cid": "34",
+          "smiles": "ON=CC1=CC(=CC=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 5.718209955841303,
+          "artifact_bytes": 4627
+        },
+        {
+          "cid": "35",
+          "smiles": "OC1=C2C=CC(=CC2=NC=C1[N+]([O-])=O)Cl",
+          "status": "succeeded",
+          "affinity": -5.1,
+          "seconds": 5.6787383342161775,
+          "artifact_bytes": 5233
+        },
+        {
+          "cid": "36",
+          "smiles": "CC1=CC=CC2=NC=C(C)C(=C12)Cl",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 3.699087201617658,
+          "artifact_bytes": 5326
+        },
+        {
+          "cid": "37",
+          "smiles": "CCC(CC)([CH](OC(N)=O)C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -1.9,
+          "seconds": 15.795138145796955,
+          "artifact_bytes": 10188
+        },
+        {
+          "cid": "38",
+          "smiles": "ON=C(CC1=CC=CC=C1)[CH](C#N)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 13.075970804318786,
+          "artifact_bytes": 7780
+        },
+        {
+          "cid": "39",
+          "smiles": "O[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 8.16735730227083,
+          "artifact_bytes": 6730
+        },
+        {
+          "cid": "40",
+          "smiles": "COC1=CC=C(CC2=CC=C(OC)C=C2)C=C1",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 9.693473231978714,
+          "artifact_bytes": 7485
+        },
+        {
+          "cid": "41",
+          "smiles": "CN(C)[CH](C1=CC=CC=C1)C2=C(C)C=CC=C2",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 7.499117288738489,
+          "artifact_bytes": 7950
+        },
+        {
+          "cid": "42",
+          "smiles": "COC1=CC(=C(N)C(=C1)[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 7.320581844076514,
+          "artifact_bytes": 5733
+        },
+        {
+          "cid": "43",
+          "smiles": "NN=C(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 8.27133050467819,
+          "artifact_bytes": 6451
+        },
+        {
+          "cid": "44",
+          "smiles": "COC1=CC=C(C=C1)C=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 5.221499935723841,
+          "artifact_bytes": 4810
+        },
+        {
+          "cid": "45",
+          "smiles": "C1=CC=C(C=C1)C(N=C(C2=CC=CC=C2)C3=CC=CC=C3)C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": 0.7,
+          "seconds": 19.11420478578657,
+          "artifact_bytes": 10954
+        },
+        {
+          "cid": "46",
+          "smiles": "C1=CC=C(C=C1)N=C(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 11.578175689093769,
+          "artifact_bytes": 8074
+        },
+        {
+          "cid": "47",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 7.823455767706037,
+          "artifact_bytes": 7287
+        },
+        {
+          "cid": "49",
+          "smiles": "OC(=O)[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 10.064139113761485,
+          "artifact_bytes": 7272
+        },
+        {
+          "cid": "50",
+          "smiles": "CCC1=C(N)C=C(C)N=C1",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 3.6412921342998743,
+          "artifact_bytes": 5108
+        },
+        {
+          "cid": "51",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)OC4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -0.7,
+          "seconds": 16.150449154898524,
+          "artifact_bytes": 9462
+        },
+        {
+          "cid": "52",
+          "smiles": "N#C[CH](C(C1=CC=CC=C1)C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.6,
+          "seconds": 14.101626880466938,
+          "artifact_bytes": 8945
+        },
+        {
+          "cid": "54",
+          "smiles": "CC(=O)[CH]1CC2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -5.7,
+          "seconds": 5.196061744354665,
+          "artifact_bytes": 5360
+        }
+      ],
+      "total_seconds": 419.4452406335622
+    },
+    {
+      "cpu": 4,
+      "results": [
+        {
+          "cid": "1",
+          "smiles": "CC1=CC(=O)C=CC1=O",
+          "status": "succeeded",
+          "affinity": -5.9,
+          "seconds": 1.532462160103023,
+          "artifact_bytes": 3625
+        },
+        {
+          "cid": "2",
+          "smiles": "S(SC1=NC2=CC=CC=C2S1)C3=NC4=C(S3)C=CC=C4",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 5.81941887550056,
+          "artifact_bytes": 6937
+        },
+        {
+          "cid": "3",
+          "smiles": "OC1=C(Cl)C=C(C=C1[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 3.3325288193300366,
+          "artifact_bytes": 4697
+        },
+        {
+          "cid": "4",
+          "smiles": "[O-][N+](=O)C1=CNC(=N)S1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 1.774718115106225,
+          "artifact_bytes": 3391
+        },
+        {
+          "cid": "5",
+          "smiles": "NC1=CC2=C(C=C1)C(=O)C3=C(C=CC=C3)C2=O",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 3.191300299949944,
+          "artifact_bytes": 6424
+        },
+        {
+          "cid": "6",
+          "smiles": "OC(=O)C1=C(C=CC=C1)C2=C3C=CC(=O)C(=C3OC4=C2C=CC(=C4Br)O)Br",
+          "status": "succeeded",
+          "affinity": 6.9,
+          "seconds": 19.84564474131912,
+          "artifact_bytes": 9275
+        },
+        {
+          "cid": "7",
+          "smiles": "CN(C)C1=C(Cl)C(=O)C2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 3.869444528594613,
+          "artifact_bytes": 6143
+        },
+        {
+          "cid": "8",
+          "smiles": "CC1=C(C2=C(C=C1)C(=O)C3=CC=CC=C3C2=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 4.51097341068089,
+          "artifact_bytes": 7074
+        },
+        {
+          "cid": "9",
+          "smiles": "CC(=NO)C(C)=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 2.7125465366989374,
+          "artifact_bytes": 3946
+        },
+        {
+          "cid": "10",
+          "smiles": "C1=CC=C(C=C1)P(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.5,
+          "seconds": 6.196450669318438,
+          "artifact_bytes": 7820
+        },
+        {
+          "cid": "11",
+          "smiles": "CC(C)(C)C1=C(O)C=C(C(=C1)O)C(C)(C)C",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 5.273437277413905,
+          "artifact_bytes": 8379
+        },
+        {
+          "cid": "12",
+          "smiles": "CC1=NN(C(=O)C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 3.098834644071758,
+          "artifact_bytes": 5362
+        },
+        {
+          "cid": "13",
+          "smiles": "NC1=CC=NC2=C1C=CC(=C2)Cl",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 2.360759014263749,
+          "artifact_bytes": 4778
+        },
+        {
+          "cid": "14",
+          "smiles": "CCCCCC[CH]1CCCCN1",
+          "status": "succeeded",
+          "affinity": -4.1,
+          "seconds": 5.630593417212367,
+          "artifact_bytes": 7451
+        },
+        {
+          "cid": "15",
+          "smiles": "O=CC1=C2C=CC=CC2=CC3=C1C=CC=C3",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 3.8206157851964235,
+          "artifact_bytes": 6162
+        },
+        {
+          "cid": "16",
+          "smiles": "BrN1C(=O)CCC1=O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 2.4290218893438578,
+          "artifact_bytes": 3041
+        },
+        {
+          "cid": "18",
+          "smiles": "C(COC1=C(C=CC=C1)C2=CC=CC=C2)OC3=CC=CC=C3C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -3.0,
+          "seconds": 19.66281706467271,
+          "artifact_bytes": 11437
+        },
+        {
+          "cid": "20",
+          "smiles": "CC(=O)NC1=NC2=C(C=C1)C(=CC=N2)O",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 6.544022336602211,
+          "artifact_bytes": 5923
+        },
+        {
+          "cid": "21",
+          "smiles": "CC1=C2C=CC(=NC2=NC(=C1)O)N",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 4.404789507389069,
+          "artifact_bytes": 5484
+        },
+        {
+          "cid": "22",
+          "smiles": "CCOC(=O)C1=CN=C2N=C(N)C=CC2=C1O",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 10.637301480397582,
+          "artifact_bytes": 6947
+        },
+        {
+          "cid": "23",
+          "smiles": "CC1=CC(=NC=C1)N=CC2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 6.51168271433562,
+          "artifact_bytes": 6248
+        },
+        {
+          "cid": "24",
+          "smiles": "C[N+](C)(C)CC1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 3.285717169754207,
+          "artifact_bytes": 5894
+        },
+        {
+          "cid": "25",
+          "smiles": "C[N+](C)(C)C(=O)C1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 3.830698501318693,
+          "artifact_bytes": 5818
+        },
+        {
+          "cid": "26",
+          "smiles": "ICCC(C1=CC=CC=C1)(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": 0.1,
+          "seconds": 8.114991590380669,
+          "artifact_bytes": 9308
+        },
+        {
+          "cid": "27",
+          "smiles": "CC1=CC(=C(C[N+](C)(C)C)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 3.2248569102957845,
+          "artifact_bytes": 7673
+        },
+        {
+          "cid": "28",
+          "smiles": "C[C](O)(CC(O)=O)C1=CC=C(C=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 5.564709398895502,
+          "artifact_bytes": 6676
+        },
+        {
+          "cid": "29",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(Cl)C=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 3.6649005468934774,
+          "artifact_bytes": 6340
+        },
+        {
+          "cid": "30",
+          "smiles": "ON=CC1=CC=C(O)C=C1",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 2.353081782348454,
+          "artifact_bytes": 4310
+        },
+        {
+          "cid": "31",
+          "smiles": "CC1=CC(=C(N)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -5.0,
+          "seconds": 1.8595078429207206,
+          "artifact_bytes": 5243
+        },
+        {
+          "cid": "32",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(C=C2)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 4.602179508656263,
+          "artifact_bytes": 6939
+        },
+        {
+          "cid": "33",
+          "smiles": "CC(O)(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 3.9792229821905494,
+          "artifact_bytes": 6699
+        },
+        {
+          "cid": "34",
+          "smiles": "ON=CC1=CC(=CC=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 2.848062696866691,
+          "artifact_bytes": 4627
+        },
+        {
+          "cid": "35",
+          "smiles": "OC1=C2C=CC(=CC2=NC=C1[N+]([O-])=O)Cl",
+          "status": "succeeded",
+          "affinity": -5.1,
+          "seconds": 2.832750520668924,
+          "artifact_bytes": 5233
+        },
+        {
+          "cid": "36",
+          "smiles": "CC1=CC=CC2=NC=C(C)C(=C12)Cl",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 1.9793291296809912,
+          "artifact_bytes": 5326
+        },
+        {
+          "cid": "37",
+          "smiles": "CCC(CC)([CH](OC(N)=O)C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -1.9,
+          "seconds": 7.06416701246053,
+          "artifact_bytes": 10188
+        },
+        {
+          "cid": "38",
+          "smiles": "ON=C(CC1=CC=CC=C1)[CH](C#N)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 6.667061792686582,
+          "artifact_bytes": 7780
+        },
+        {
+          "cid": "39",
+          "smiles": "O[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 4.054957799613476,
+          "artifact_bytes": 6730
+        },
+        {
+          "cid": "40",
+          "smiles": "COC1=CC=C(CC2=CC=C(OC)C=C2)C=C1",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 4.819107862189412,
+          "artifact_bytes": 7485
+        },
+        {
+          "cid": "41",
+          "smiles": "CN(C)[CH](C1=CC=CC=C1)C2=C(C)C=CC=C2",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 3.900801851414144,
+          "artifact_bytes": 7950
+        },
+        {
+          "cid": "42",
+          "smiles": "COC1=CC(=C(N)C(=C1)[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 3.8235789705067873,
+          "artifact_bytes": 5733
+        },
+        {
+          "cid": "43",
+          "smiles": "NN=C(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 4.321454425342381,
+          "artifact_bytes": 6451
+        },
+        {
+          "cid": "44",
+          "smiles": "COC1=CC=C(C=C1)C=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 2.7764654895290732,
+          "artifact_bytes": 4810
+        },
+        {
+          "cid": "45",
+          "smiles": "C1=CC=C(C=C1)C(N=C(C2=CC=CC=C2)C3=CC=CC=C3)C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": 0.7,
+          "seconds": 9.559593066573143,
+          "artifact_bytes": 10954
+        },
+        {
+          "cid": "46",
+          "smiles": "C1=CC=C(C=C1)N=C(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 6.40484878513962,
+          "artifact_bytes": 8074
+        },
+        {
+          "cid": "47",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 4.717823624610901,
+          "artifact_bytes": 7287
+        },
+        {
+          "cid": "49",
+          "smiles": "OC(=O)[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 5.07329713832587,
+          "artifact_bytes": 7272
+        },
+        {
+          "cid": "50",
+          "smiles": "CCC1=C(N)C=C(C)N=C1",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 2.0917599042877555,
+          "artifact_bytes": 5108
+        },
+        {
+          "cid": "51",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)OC4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -0.7,
+          "seconds": 8.82575464528054,
+          "artifact_bytes": 9462
+        },
+        {
+          "cid": "52",
+          "smiles": "N#C[CH](C(C1=CC=CC=C1)C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.6,
+          "seconds": 7.324736301787198,
+          "artifact_bytes": 8945
+        },
+        {
+          "cid": "54",
+          "smiles": "CC(=O)[CH]1CC2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -5.7,
+          "seconds": 2.6776367696002126,
+          "artifact_bytes": 5360
+        }
+      ],
+      "total_seconds": 255.4024173077196
+    },
+    {
+      "cpu": 8,
+      "results": [
+        {
+          "cid": "1",
+          "smiles": "CC1=CC(=O)C=CC1=O",
+          "status": "succeeded",
+          "affinity": -5.9,
+          "seconds": 1.1323017589747906,
+          "artifact_bytes": 3625
+        },
+        {
+          "cid": "2",
+          "smiles": "S(SC1=NC2=CC=CC=C2S1)C3=NC4=C(S3)C=CC=C4",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 3.3461720487102866,
+          "artifact_bytes": 6937
+        },
+        {
+          "cid": "3",
+          "smiles": "OC1=C(Cl)C=C(C=C1[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 2.3086888836696744,
+          "artifact_bytes": 4697
+        },
+        {
+          "cid": "4",
+          "smiles": "[O-][N+](=O)C1=CNC(=N)S1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 1.4254295080900192,
+          "artifact_bytes": 3391
+        },
+        {
+          "cid": "5",
+          "smiles": "NC1=CC2=C(C=C1)C(=O)C3=C(C=CC=C3)C2=O",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 2.185889729298651,
+          "artifact_bytes": 6424
+        },
+        {
+          "cid": "6",
+          "smiles": "OC(=O)C1=C(C=CC=C1)C2=C3C=CC(=O)C(=C3OC4=C2C=CC(=C4Br)O)Br",
+          "status": "succeeded",
+          "affinity": 6.9,
+          "seconds": 6.934054079465568,
+          "artifact_bytes": 9275
+        },
+        {
+          "cid": "7",
+          "smiles": "CN(C)C1=C(Cl)C(=O)C2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 1.7213298734277487,
+          "artifact_bytes": 6143
+        },
+        {
+          "cid": "8",
+          "smiles": "CC1=C(C2=C(C=C1)C(=O)C3=CC=CC=C3C2=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 2.4722135085612535,
+          "artifact_bytes": 7074
+        },
+        {
+          "cid": "9",
+          "smiles": "CC(=NO)C(C)=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 1.4198344750329852,
+          "artifact_bytes": 3946
+        },
+        {
+          "cid": "10",
+          "smiles": "C1=CC=C(C=C1)P(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.5,
+          "seconds": 3.5119390012696385,
+          "artifact_bytes": 7820
+        },
+        {
+          "cid": "11",
+          "smiles": "CC(C)(C)C1=C(O)C=C(C(=C1)O)C(C)(C)C",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 3.4017632976174355,
+          "artifact_bytes": 8379
+        },
+        {
+          "cid": "12",
+          "smiles": "CC1=NN(C(=O)C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 2.146050405688584,
+          "artifact_bytes": 5362
+        },
+        {
+          "cid": "13",
+          "smiles": "NC1=CC=NC2=C1C=CC(=C2)Cl",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 1.611526807770133,
+          "artifact_bytes": 4778
+        },
+        {
+          "cid": "14",
+          "smiles": "CCCCCC[CH]1CCCCN1",
+          "status": "succeeded",
+          "affinity": -4.1,
+          "seconds": 2.3735375199466944,
+          "artifact_bytes": 7451
+        },
+        {
+          "cid": "15",
+          "smiles": "O=CC1=C2C=CC=CC2=CC3=C1C=CC=C3",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 2.102381167933345,
+          "artifact_bytes": 6162
+        },
+        {
+          "cid": "16",
+          "smiles": "BrN1C(=O)CCC1=O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 1.1371609903872013,
+          "artifact_bytes": 3041
+        },
+        {
+          "cid": "18",
+          "smiles": "C(COC1=C(C=CC=C1)C2=CC=CC=C2)OC3=CC=CC=C3C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -3.0,
+          "seconds": 6.005223994143307,
+          "artifact_bytes": 11437
+        },
+        {
+          "cid": "20",
+          "smiles": "CC(=O)NC1=NC2=C(C=C1)C(=CC=N2)O",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 2.507591507397592,
+          "artifact_bytes": 5923
+        },
+        {
+          "cid": "21",
+          "smiles": "CC1=C2C=CC(=NC2=NC(=C1)O)N",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 1.8820596653968096,
+          "artifact_bytes": 5484
+        },
+        {
+          "cid": "22",
+          "smiles": "CCOC(=O)C1=CN=C2N=C(N)C=CC2=C1O",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 4.468644398264587,
+          "artifact_bytes": 6947
+        },
+        {
+          "cid": "23",
+          "smiles": "CC1=CC(=NC=C1)N=CC2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 3.2106756763532758,
+          "artifact_bytes": 6248
+        },
+        {
+          "cid": "24",
+          "smiles": "C[N+](C)(C)CC1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 2.3251272225752473,
+          "artifact_bytes": 5894
+        },
+        {
+          "cid": "25",
+          "smiles": "C[N+](C)(C)C(=O)C1=CC=CC=C1",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 2.1880124928429723,
+          "artifact_bytes": 5818
+        },
+        {
+          "cid": "26",
+          "smiles": "ICCC(C1=CC=CC=C1)(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": 0.1,
+          "seconds": 5.321288189850748,
+          "artifact_bytes": 9308
+        },
+        {
+          "cid": "27",
+          "smiles": "CC1=CC(=C(C[N+](C)(C)C)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 1.867467804811895,
+          "artifact_bytes": 7673
+        },
+        {
+          "cid": "28",
+          "smiles": "C[C](O)(CC(O)=O)C1=CC=C(C=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 3.670179508626461,
+          "artifact_bytes": 6676
+        },
+        {
+          "cid": "29",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(Cl)C=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 2.271341973915696,
+          "artifact_bytes": 6340
+        },
+        {
+          "cid": "30",
+          "smiles": "ON=CC1=CC=C(O)C=C1",
+          "status": "succeeded",
+          "affinity": -4.8,
+          "seconds": 1.710196005180478,
+          "artifact_bytes": 4310
+        },
+        {
+          "cid": "31",
+          "smiles": "CC1=CC(=C(N)C(=C1)C)C",
+          "status": "succeeded",
+          "affinity": -5.0,
+          "seconds": 1.4991423394531012,
+          "artifact_bytes": 5243
+        },
+        {
+          "cid": "32",
+          "smiles": "CC1=CC=C(C=C1)C(=O)C2=CC=C(C=C2)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 2.7626575799658895,
+          "artifact_bytes": 6939
+        },
+        {
+          "cid": "33",
+          "smiles": "CC(O)(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.6,
+          "seconds": 2.3373937401920557,
+          "artifact_bytes": 6699
+        },
+        {
+          "cid": "34",
+          "smiles": "ON=CC1=CC(=CC=C1)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 1.7041215989738703,
+          "artifact_bytes": 4627
+        },
+        {
+          "cid": "35",
+          "smiles": "OC1=C2C=CC(=CC2=NC=C1[N+]([O-])=O)Cl",
+          "status": "succeeded",
+          "affinity": -5.1,
+          "seconds": 1.7303200429305434,
+          "artifact_bytes": 5233
+        },
+        {
+          "cid": "36",
+          "smiles": "CC1=CC=CC2=NC=C(C)C(=C12)Cl",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 1.242290310561657,
+          "artifact_bytes": 5326
+        },
+        {
+          "cid": "37",
+          "smiles": "CCC(CC)([CH](OC(N)=O)C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -1.9,
+          "seconds": 3.870415424928069,
+          "artifact_bytes": 10188
+        },
+        {
+          "cid": "38",
+          "smiles": "ON=C(CC1=CC=CC=C1)[CH](C#N)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 3.5982581870630383,
+          "artifact_bytes": 7780
+        },
+        {
+          "cid": "39",
+          "smiles": "O[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.9,
+          "seconds": 2.3968207854777575,
+          "artifact_bytes": 6730
+        },
+        {
+          "cid": "40",
+          "smiles": "COC1=CC=C(CC2=CC=C(OC)C=C2)C=C1",
+          "status": "succeeded",
+          "affinity": -4.7,
+          "seconds": 2.6802911227568984,
+          "artifact_bytes": 7485
+        },
+        {
+          "cid": "41",
+          "smiles": "CN(C)[CH](C1=CC=CC=C1)C2=C(C)C=CC=C2",
+          "status": "succeeded",
+          "affinity": -3.9,
+          "seconds": 2.263041116297245,
+          "artifact_bytes": 7950
+        },
+        {
+          "cid": "42",
+          "smiles": "COC1=CC(=C(N)C(=C1)[N+]([O-])=O)[N+]([O-])=O",
+          "status": "succeeded",
+          "affinity": -4.0,
+          "seconds": 2.195817518979311,
+          "artifact_bytes": 5733
+        },
+        {
+          "cid": "43",
+          "smiles": "NN=C(C1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 2.710167466662824,
+          "artifact_bytes": 6451
+        },
+        {
+          "cid": "44",
+          "smiles": "COC1=CC=C(C=C1)C=NO",
+          "status": "succeeded",
+          "affinity": -4.5,
+          "seconds": 1.6343390680849552,
+          "artifact_bytes": 4810
+        },
+        {
+          "cid": "45",
+          "smiles": "C1=CC=C(C=C1)C(N=C(C2=CC=CC=C2)C3=CC=CC=C3)C4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": 0.7,
+          "seconds": 5.25259517878294,
+          "artifact_bytes": 10954
+        },
+        {
+          "cid": "46",
+          "smiles": "C1=CC=C(C=C1)N=C(C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.8,
+          "seconds": 3.6320279398933053,
+          "artifact_bytes": 8074
+        },
+        {
+          "cid": "47",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)O",
+          "status": "succeeded",
+          "affinity": -5.2,
+          "seconds": 2.7627514516934752,
+          "artifact_bytes": 7287
+        },
+        {
+          "cid": "49",
+          "smiles": "OC(=O)[CH](CC1=CC=CC=C1)C2=CC=CC=C2",
+          "status": "succeeded",
+          "affinity": -4.4,
+          "seconds": 2.896631254814565,
+          "artifact_bytes": 7272
+        },
+        {
+          "cid": "50",
+          "smiles": "CCC1=C(N)C=C(C)N=C1",
+          "status": "succeeded",
+          "affinity": -4.3,
+          "seconds": 1.2381866099312901,
+          "artifact_bytes": 5108
+        },
+        {
+          "cid": "51",
+          "smiles": "CC1=C(C2=CC=CC=C2)C(=C3C=CC=CC3=N1)OC4=CC=CC=C4",
+          "status": "succeeded",
+          "affinity": -0.7,
+          "seconds": 4.544127129949629,
+          "artifact_bytes": 9462
+        },
+        {
+          "cid": "52",
+          "smiles": "N#C[CH](C(C1=CC=CC=C1)C2=CC=CC=C2)C3=CC=CC=C3",
+          "status": "succeeded",
+          "affinity": -3.6,
+          "seconds": 3.960021734237671,
+          "artifact_bytes": 8945
+        },
+        {
+          "cid": "54",
+          "smiles": "CC(=O)[CH]1CC2=C(C=CC=C2)C1=O",
+          "status": "succeeded",
+          "affinity": -5.7,
+          "seconds": 1.4949967851862311,
+          "artifact_bytes": 5360
+        }
+      ],
+      "total_seconds": 135.0644958820194
+    }
+  ]
+}
