@@ -99,7 +99,7 @@ class Compound(Base):
     __tablename__ = 'compounds'
     __table_args__ = (UniqueConstraint('task_id', 'row_number'),
                      Index('compound_results', 'task_id', 'affinity'),
-                     Index('compound_status', 'task_id', 'status'))
+                     Index('compound_status', 'task_id', 'status', 'row_number'))
     id: Mapped[int] = mapped_column(primary_key=True)
     task_id: Mapped[str] = mapped_column(ForeignKey('tasks.id', ondelete='CASCADE'))
     row_number: Mapped[int] = mapped_column(Integer)

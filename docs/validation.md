@@ -67,3 +67,39 @@ RDKit NCI 예제 중 heavy atom 8–35개, rotatable bond 8개 이하의 앞 50�
 ## 재현
 
 [운영 안내](operations.md)에 검증 명령을 정리했다. `scripts/service_check.py`, `scripts/resilience_check.py`, `scripts/scale_check.py`, `scripts/backup_check.py`, `scripts/benchmark.py`, `frontend/e2e/workspace.spec.ts`를 사용한다. 운영 주소를 변경했다면 HTTP 검증에 `--url`, 브라우저 검증에 `DOCKSCHEDULE_URL`을 지정한다. 원본 실행 보고서와 화면은 gitignored `test-results/`에 보관한다.
+
+## 2026-10-15 코드 검토와 회귀 검증
+
+완료된 전처리를 뒤늦은 timeout 검사로 실패 처리하는 문제, 중단 후 receptor 상태가 `preparing`에 남는 문제를 수정했다. 재시도에서는 빈 CID/SMILES의 입력 오류를 유지하고 이전 계산 메타데이터를 초기화한다. 자동 timeout 재시도 후 성공한 화합물에 이전 오류가 남던 문제도 수정했다. 계정 상태에 명시적 `null`을 보내면 DB 오류 대신 422를 반환한다.
+
+스케줄러와 worker의 작업 상태 변경을 행 잠금으로 보호하며 재시도와 삭제도 worker 종료를 확인한다. 재시도는 계정 정지와 같은 순서로 사용자, 작업을 잠근다. 업로드 파일 처리와 PDB 검사는 API의 작업 스레드에서 실행하고, PostgreSQL에서는 업로드의 최종 용량 검사와 저장을 직렬화한다.
+
+프런트엔드는 이전 조회가 끝난 후 다음 자동 갱신을 예약한다. 화면 이동 시 요청을 취소하고 이전 작업의 데이터와 선택 상태를 제거한다. 3D 뷰어는 필요한 화면에서만 로딩하며, 구조 로딩 완료 후 pose를 한 번 요청한다. 폐기된 뷰어의 응답을 무시하고 구조와 pose 오류를 각각 관리한다.
+
+| 항목 | 수정 전 | 수정 후 |
+| --- | ---: | ---: |
+| 초기 JavaScript 번들 | 1,509.91 kB | 196.95 kB |
+| 초기 JavaScript gzip | 433.66 kB | 61.60 kB |
+| 작업 목록 SELECT 수: 소유자 9명, 작업 9개, 인증·전체 개수 포함 | 12 | 4 |
+| 전체·사용자 저장 용량 검사 SELECT 수 | 6 | 1 |
+
+번들 크기는 Vite production build 출력 기준이다. 별도 3D 뷰어 번들은 1,310.59 kB이며 뷰어 사용 시 내려받는다. 용량 검사는 기존 DB 세션을 재사용해 아직 커밋되지 않은 계산 결과 크기도 확인한다. 대량 library의 다음 화합물 선택에는 `(task_id, status, row_number)` 인덱스와 단일 `pending` 상태 조건을 사용해 별도 정렬을 없앴다.
+
+- 전체 Python 테스트 **38개 통과**: 기존 실제 PDBFixer/OpenMM·QuickVina 계산 포함. 수정 전에는 신규 회귀 테스트 6개에서 상태 오류·입력 검증 오류·반복 조회를 재현했다.
+- production preview의 브라우저 회귀 시나리오 **4개 통과**: 느린 응답, 작업 전환, 뷰어 지연 로딩, pose 요청 실패 후 복구. API는 테스트 응답으로 대체하고 NGL은 실제 PDB/SDF를 로딩한다.
+- TypeScript 검사와 production build 통과.
+- 임시 SQLite DB에서 Alembic 신규 설치·인덱스 downgrade·재upgrade 및 정렬 없는 실행 계획 확인. 운영 PostgreSQL의 동시 실행과 배포 검증은 이번 검사에 포함하지 않았다.
+- 기존 Starlette/httpx deprecation warning 1개는 남아 있다.
+
+회귀 테스트 재현:
+
+```bash
+OPENMM_CPU_THREADS=2 OPENBLAS_NUM_THREADS=1 uv run pytest -q
+npm --prefix frontend run build
+npm --prefix frontend run preview -- --port 5180 --strictPort
+# 다른 터미널에서 실행
+cd frontend
+DOCKSCHEDULE_URL=http://127.0.0.1:5180 npx playwright test e2e/review-regressions.spec.ts
+```
+
+인덱스 변경은 migration `9b7c31e2a640`에 포함된다. 배포 시 기존 API 시작 명령의 `alembic upgrade head`로 적용한다. 이번 검토에서는 운영 서비스를 재배포하거나 운영 DB를 변경하지 않았다.

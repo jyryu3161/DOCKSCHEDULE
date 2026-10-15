@@ -31,7 +31,7 @@ def _compound_process(smiles, receptor, output, parameters, cpus, binary):
 
 def _active(task_id, run_id):
     with transaction() as db:
-        t = db.get(Task, task_id)
+        t = db.get(Task, task_id, with_for_update=True)
         if t.run_id != run_id or t.cancel_requested:
             return False
         t.heartbeat = now()
@@ -40,7 +40,7 @@ def _active(task_id, run_id):
 
 def run_task(task_id, run_id):
     with transaction() as db:
-        task = db.get(Task, task_id)
+        task = db.get(Task, task_id, with_for_update=True)
         if task.run_id != run_id or task.status != 'reserved' or task.cancel_requested:
             return
         task.status, task.heartbeat = 'running', now()
@@ -55,7 +55,7 @@ def run_task(task_id, run_id):
             from .chemistry import prepare_receptor
             result = prepare_receptor(Path(source), receptor_dir(receptor_owner, receptor_id), params)
             with transaction() as db:
-                task = db.get(Task, task_id)
+                task = db.get(Task, task_id, with_for_update=True)
                 if task.run_id != run_id or task.cancel_requested:
                     return
                 receptor = db.get(Receptor, receptor_id)
@@ -74,12 +74,16 @@ def run_task(task_id, run_id):
         context = multiprocessing.get_context('fork')
         while _active(task_id, run_id):
             with transaction() as db:
-                c = db.scalar(select(Compound).where(Compound.task_id == task_id, Compound.status.in_(['pending', 'running'])).order_by(Compound.row_number).limit(1))
+                # Recovery and retry reset interrupted rows to pending. One status
+                # lets the compound_status index return the next row without sorting.
+                c = db.scalar(select(Compound).where(Compound.task_id == task_id, Compound.status == 'pending').order_by(Compound.row_number).limit(1))
                 if c is None:
                     break
                 cfg = db.get(Settings, 1).values
-                check_capacity(cfg, owner)
+                check_capacity(cfg, owner, db=db)
                 c.status, c.attempts = 'running', c.attempts+1
+                c.error, c.affinity, c.normalized_smiles = None, None, None
+                c.details, c.elapsed = {}, None
                 compound_id, smiles = c.id, c.smiles
             output = compound_dir(owner, task_id, compound_id)
             output.mkdir(parents=True, exist_ok=True)
@@ -108,7 +112,7 @@ def run_task(task_id, run_id):
             else:
                 result = {'status': 'failed', 'error': f'계산 프로세스 종료 코드 {proc.exitcode}'}
             with transaction() as db:
-                task = db.get(Task, task_id)
+                task = db.get(Task, task_id, with_for_update=True)
                 if task.run_id != run_id or task.cancel_requested:
                     return
                 c = db.get(Compound, compound_id)
@@ -125,7 +129,7 @@ def run_task(task_id, run_id):
                     task.failed += 1
                 task.heartbeat = now()
         with transaction() as db:
-            task = db.get(Task, task_id)
+            task = db.get(Task, task_id, with_for_update=True)
             if task.run_id != run_id or task.cancel_requested:
                 return
             partial = db.scalar(select(func.count()).select_from(Compound).where(Compound.task_id == task_id, Compound.status == 'partial'))
@@ -134,7 +138,7 @@ def run_task(task_id, run_id):
     except Exception as exc:
         traceback.print_exc()
         with transaction() as db:
-            task = db.get(Task, task_id)
+            task = db.get(Task, task_id, with_for_update=True)
             if task.run_id == run_id:
                 account_task(db, task)
                 task.status, task.error, task.finished_at = 'failed', str(exc), now()

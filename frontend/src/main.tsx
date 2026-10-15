@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -26,33 +26,17 @@ import {
   X,
 } from "lucide-react";
 import { api, post, Job, labels, Residue, Structure, User } from "./api";
-import Viewer from "./Viewer";
+import { useLoad } from "./useLoad";
 import "./style.css";
 
-function useLoad<T = any>(path: string, interval = 0) {
-  const [data, setData] = useState<T | null>(null),
-    [error, setError] = useState("");
-  const requestId = useRef(0);
-  const reload = useCallback(async () => {
-    const id = ++requestId.current;
-    try {
-      const result = await api<T>(path);
-      if (id !== requestId.current) return;
-      setData(result);
-      setError("");
-    } catch (e) {
-      if (id === requestId.current) setError((e as Error).message);
-    }
-  }, [path]);
-  useEffect(() => {
-    reload();
-    const timer = interval ? setInterval(reload, interval) : undefined;
-    return () => {
-      ++requestId.current;
-      clearInterval(timer);
-    };
-  }, [reload, interval]);
-  return { data, error, reload };
+const LazyViewer = lazy(() => import("./Viewer"));
+
+function Viewer(props: React.ComponentProps<typeof LazyViewer>) {
+  return (
+    <Suspense fallback={<p className="muted">3D 뷰어를 불러오는 중…</p>}>
+      <LazyViewer {...props} />
+    </Suspense>
+  );
 }
 const Badge = ({ status }: { status: string }) => (
   <span className={"badge " + status}>
@@ -341,7 +325,7 @@ function App() {
           ) : isAdmin && user.role === "admin" ? (
             <Admin />
           ) : route.startsWith("job/") ? (
-            <JobDetail id={route.slice(4)} />
+            <JobDetail key={route.slice(4)} id={route.slice(4)} />
           ) : (
             <Dashboard user={user} />
           )}
@@ -730,8 +714,10 @@ function NewJob() {
     [stripSalts, setStripSalts] = useState(true);
   const residues: Residue[] = receptor?.structure?.residues || [];
   useEffect(() => {
+    setReceptor(null);
+    setSelected([]);
+    setGridSet(false);
     if (!receptorId) {
-      setReceptor(null);
       return;
     }
     let disposed = false;
@@ -751,8 +737,6 @@ function NewJob() {
         if (!disposed) setError((e as Error).message);
       }
     };
-    setSelected([]);
-    setGridSet(false);
     load();
     return () => {
       disposed = true;

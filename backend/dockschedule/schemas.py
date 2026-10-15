@@ -75,6 +75,13 @@ class UserUpdate(BaseModel):
     status: str | None = Field(default=None, pattern='^(approved|rejected|suspended|pending)$')
     cpu_override: int | None = Field(default=None, ge=1, le=4096)
 
+    @field_validator('status')
+    @classmethod
+    def status_not_null(cls, value):
+        if value is None:
+            raise ValueError('계정 상태는 비워 둘 수 없습니다.')
+        return value
+
 
 class PasswordChange(BaseModel):
     old_password: str = Field(max_length=128)

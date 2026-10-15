@@ -1,5 +1,6 @@
 import shutil
 import os
+from contextlib import nullcontext
 from sqlalchemy import func, select
 from .db import Session
 from .models import Compound, Receptor, Task, Upload
@@ -61,23 +62,30 @@ def account_task(db, task):
     task.log_bytes = log.stat().st_size if log.exists() else 0
 
 
-def usage(owner=None, fresh=False):
-    # These sums scan one record per upload/receptor/task, independent of library size.
-    with Session() as db:
-        total = 0
-        for model, expression in ((Upload, Upload.size), (Receptor, Receptor.artifact_bytes),
-                                  (Task, Task.artifact_bytes + Task.log_bytes)):
-            query = select(func.coalesce(func.sum(expression), 0))
-            if owner is not None:
-                query = query.where(model.owner_id == owner)
-            total += db.scalar(query)
+def _used_bytes(owner=None):
+    # Aggregate the small upload/receptor/task tables in a single round trip.
+    totals = []
+    for model, expression in ((Upload, Upload.size), (Receptor, Receptor.artifact_bytes),
+                              (Task, Task.artifact_bytes + Task.log_bytes)):
+        query = select(func.coalesce(func.sum(expression), 0))
+        if owner is not None:
+            query = query.where(model.owner_id == owner)
+        totals.append(query.scalar_subquery())
+    return sum(totals)
+
+
+def usage(owner=None, fresh=False, db=None):
+    with nullcontext(db) if db is not None else Session() as query_db:
+        total = query_db.scalar(select(_used_bytes(owner)))
     return dict(used_bytes=total, free_bytes=shutil.disk_usage(root()).free)
 
 
-def check_capacity(settings, owner, additional=0):
-    if usage()['used_bytes'] + additional > settings['storage_limit_gb'] * 1024**3:
+def check_capacity(settings, owner, additional=0, db=None):
+    with nullcontext(db) if db is not None else Session() as query_db:
+        total, owned = query_db.execute(select(_used_bytes(), _used_bytes(owner))).one()
+    if total + additional > settings['storage_limit_gb'] * 1024**3:
         raise ValueError('플랫폼 저장 공간 한도에 도달했습니다.')
-    if usage(owner)['used_bytes'] + additional > settings['user_storage_limit_gb'] * 1024**3:
+    if owned + additional > settings['user_storage_limit_gb'] * 1024**3:
         raise ValueError('학생별 저장 공간 한도에 도달했습니다.')
     if shutil.disk_usage(root()).free < additional + 2*1024**3:
         raise ValueError('서버 디스크 여유 공간이 부족합니다.')
