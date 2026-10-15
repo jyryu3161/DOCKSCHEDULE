@@ -56,7 +56,7 @@ class Scheduler:
 
     def recover(self):
         with transaction() as db:
-            for task in db.scalars(select(Task).where((Task.status.in_(ACTIVE)) | (Task.worker_pid.is_not(None)))):
+            for task in db.scalars(select(Task).where((Task.status.in_(ACTIVE)) | (Task.worker_pid.is_not(None))).with_for_update()):
                 # The dispatcher owns these processes in one host/container PID namespace.
                 # Check creation time before killing to avoid unrelated reused PIDs.
                 if matches(task.worker_pid, task.worker_created):
@@ -70,7 +70,10 @@ class Scheduler:
                 account_task(db, task)
                 if task.status in ACTIVE:
                     task.status = 'cancelled' if task.cancel_requested else 'queued'
+                    task.finished_at = now() if task.cancel_requested else None
                     task.error = '이전 실행 중단 후 미완료 화합물부터 재개합니다.'
+                    if task.kind == 'prepare':
+                        db.get(Receptor, task.receptor_id).status = task.status
                     db.execute(update(Compound).where(Compound.task_id == task.id, Compound.status == 'running').values(status='pending'))
                 task.cpu_ids, task.worker_pid, task.worker_created = [], None, None
 
@@ -91,10 +94,10 @@ class Scheduler:
 
     def reap(self):
         with transaction() as db:
-            for task in db.scalars(select(Task).where(Task.worker_pid.is_not(None))):
+            for task in db.scalars(select(Task).where(Task.worker_pid.is_not(None)).with_for_update()):
                 live = matches(task.worker_pid, task.worker_created)
-                expired = task.kind == 'prepare' and task.started_at and (now()-task.started_at).total_seconds() > db.get(Settings, 1).values['preparation_timeout']
-                if task.cancel_requested or expired:
+                expired = task.status in ACTIVE and task.kind == 'prepare' and task.started_at and (now()-task.started_at).total_seconds() > db.get(Settings, 1).values['preparation_timeout']
+                if task.status in ACTIVE and (task.cancel_requested or expired):
                     if live:
                         stop_tree(task.worker_pid, task.worker_created)
                     task.status = 'cancelled' if task.cancel_requested else 'failed'
@@ -107,7 +110,10 @@ class Scheduler:
                     account_task(db, task)
                     if task.status in ACTIVE:
                         task.status = 'queued'
+                        task.finished_at = None
                         task.error = 'Worker 중단 후 미완료 항목을 다시 실행합니다.'
+                        if task.kind == 'prepare':
+                            db.get(Receptor, task.receptor_id).status = 'queued'
                         db.execute(update(Compound).where(Compound.task_id == task.id, Compound.status == 'running').values(status='pending'))
                     task.cpu_ids, task.worker_pid, task.worker_created = [], None, None
                     try:
@@ -175,9 +181,13 @@ class Scheduler:
                 with transaction() as db:
                     task = db.get(Task, task_id)
                     account_task(db, task)
-                    task.status, task.cpu_ids, task.error = 'queued', [], str(exc)
+                    if task.status in ACTIVE:
+                        task.status, task.finished_at, task.error = 'queued', None, str(exc)
+                        if task.kind == 'prepare':
+                            db.get(Receptor, task.receptor_id).status = 'queued'
+                        db.execute(update(Compound).where(Compound.task_id == task.id, Compound.status == 'running').values(status='pending'))
+                    task.cpu_ids = []
                     task.worker_pid, task.worker_created = None, None
-                    db.execute(update(Compound).where(Compound.task_id == task.id, Compound.status == 'running').values(status='pending'))
 
     def run(self):
         root().mkdir(parents=True, exist_ok=True)

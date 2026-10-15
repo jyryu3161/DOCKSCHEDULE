@@ -55,11 +55,13 @@ def user_json(u):
                 role=u.role, status=u.status, cpu_override=u.cpu_override)
 
 
-def task_json(t, db=None):
+def task_json(t, db=None, owner_name=None):
     data = {k: getattr(t, k) for k in ('id', 'owner_id', 'receptor_id', 'kind', 'name', 'status', 'parameters', 'cpu_ids',
                                       'total', 'completed', 'failed', 'cancel_requested', 'error', 'created_at', 'started_at', 'finished_at')}
     if db:
         data['owner_name'] = db.get(User, t.owner_id).name
+    elif owner_name is not None:
+        data['owner_name'] = owner_name
     return data
 
 
@@ -73,12 +75,13 @@ def audit(db, u, action, target='', detail=None):
 
 def require_capacity(db, u):
     # Serialize quota checks for concurrent submissions by the same student.
-    db.execute(select(User.id).where(User.id == u.id).with_for_update())
+    # PostgreSQL NO KEY UPDATE serializes submissions without blocking audit FKs.
+    db.execute(select(User.id).where(User.id == u.id).with_for_update(key_share=True))
     s = settings(db)
     n = db.scalar(select(func.count()).select_from(Task).where(Task.owner_id == u.id, Task.status.in_(['queued', *ACTIVE])))
     if n >= s['max_pending_per_user']:
         raise HTTPException(409, '학생별 대기 및 실행 작업 수 한도에 도달했습니다.')
-    storage.check_capacity(s, u.id)
+    storage.check_capacity(s, u.id, db=db)
 
 
 @app.get('/api/health')
@@ -221,23 +224,25 @@ def put_settings(body: ResourceSettings, u=Depends(admin), db=Depends(get_db)):
 
 
 @app.post('/api/uploads', status_code=201)
-async def upload(kind: str = Query(pattern='^(pdb|library)$'), file: UploadFile = File(), u=Depends(approved), db=Depends(get_db)):
+def upload(kind: str = Query(pattern='^(pdb|library)$'), file: UploadFile = File(), u=Depends(approved), db=Depends(get_db)):
     identifier = uid()
     folder = storage.root()/str(u.id)/'uploads'
     folder.mkdir(parents=True, exist_ok=True)
     path = folder/identifier
     size, h = 0, hashlib.sha256()
-    storage.check_capacity(settings(db), u.id)
+    storage.check_capacity(settings(db), u.id, db=db)
     try:
         with path.open('wb') as f:
-            while chunk := await file.read(1024*1024):
+            while chunk := file.file.read(1024*1024):
                 size += len(chunk)
                 if size > config().max_upload_mb*1024**2:
                     raise HTTPException(413, '업로드 파일 크기 한도를 초과했습니다.')
                 h.update(chunk)
                 f.write(chunk)
-        storage.check_capacity(settings(db), u.id, size)
         structure = inspect_pdb(path.read_text()) if kind == 'pdb' else None
+        # Serialize final upload accounting so simultaneous uploads see committed sizes.
+        limits = db.scalar(select(Settings).where(Settings.id == 1).with_for_update())
+        storage.check_capacity(limits.values, u.id, size, db=db)
         record = Upload(id=identifier, owner_id=u.id, kind=kind, filename=(file.filename or 'file')[:250], path=str(path), size=size, sha256=h.hexdigest())
         db.add(record)
         db.commit()
@@ -373,7 +378,8 @@ def jobs(limit: int = Query(default=100, ge=1, le=200), offset: int = Query(defa
     elif state == 'done':
         q = q.where(Task.status.in_(FINISHED))
     total = db.scalar(select(func.count()).select_from(q.subquery())) if include_total else None
-    rows = [task_json(t, db) for t in db.scalars(q.order_by(Task.created_at.desc(), Task.id).offset(offset).limit(limit))]
+    page = q.add_columns(User.name).join(User, User.id == Task.owner_id)
+    rows = [task_json(t, owner_name=name) for t, name in db.execute(page.order_by(Task.created_at.desc(), Task.id).offset(offset).limit(limit))]
     return dict(rows=rows, total=total, limit=limit, offset=offset) if include_total else rows
 
 
@@ -394,15 +400,19 @@ def cancel(task_id: str, u=Depends(approved), db=Depends(get_db)):
 
 @app.post('/api/jobs/{task_id}/retry')
 def retry(task_id: str, u=Depends(approved), db=Depends(get_db)):
-    t = owned(db.get(Task, task_id), u)
-    if t.status not in ('partial', 'failed', 'cancelled') or t.cpu_ids:
-        raise HTTPException(409, '실행 종료와 자원 반환 후 재시도할 수 있습니다.')
+    owned(db.get(Task, task_id), u)
+    # Match account suspension's lock order: user first, then task.
     require_capacity(db, u)
+    t = owned(db.get(Task, task_id, with_for_update=True, populate_existing=True), u)
+    if t.status not in ('partial', 'failed', 'cancelled') or t.cpu_ids or t.worker_pid is not None:
+        raise HTTPException(409, '실행 종료와 자원 반환 후 재시도할 수 있습니다.')
     t.status, t.cancel_requested, t.error, t.finished_at = 'queued', False, None, None
     t.run_id = None
     if t.kind == 'screen':
-        db.execute(update(Compound).where(Compound.task_id == t.id, Compound.status.in_(['failed', 'running', 'partial'])).values(status='pending', attempts=0, error=None, affinity=None))
-        t.failed = 0
+        db.execute(update(Compound).where(Compound.task_id == t.id, Compound.status.in_(['failed', 'running', 'partial']),
+                                          Compound.cid != '', Compound.smiles != '').values(
+            status='pending', attempts=0, error=None, affinity=None, normalized_smiles=None, details={}, elapsed=None))
+        t.failed = db.scalar(select(func.count()).select_from(Compound).where(Compound.task_id == t.id, Compound.status == 'failed'))
         t.completed = db.scalar(select(func.count()).select_from(Compound).where(Compound.task_id == t.id, Compound.status == 'succeeded'))
     else:
         db.get(Receptor, t.receptor_id).status = 'queued'
@@ -507,8 +517,8 @@ def storage_info(u=Depends(admin), db=Depends(get_db)):
 
 @app.delete('/api/jobs/{task_id}')
 def delete_job(task_id: str, u=Depends(approved), db=Depends(get_db)):
-    t = owned(db.get(Task, task_id), u)
-    if t.status not in FINISHED or t.cpu_ids or t.kind != 'screen':
+    t = owned(db.get(Task, task_id, with_for_update=True), u)
+    if t.status not in FINISHED or t.cpu_ids or t.worker_pid is not None or t.kind != 'screen':
         raise HTTPException(409, '종료된 screening 작업만 삭제할 수 있습니다.')
     shutil.rmtree(storage.task_dir(t.owner_id, t.id), ignore_errors=True)
     audit(db, u, 'delete_job', t.id)

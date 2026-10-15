@@ -26,13 +26,18 @@ export default function Viewer({
     protein = useRef<any>(null),
     highlight = useRef<any>(null),
     box = useRef<any>(null);
-  const [error, setError] = useState("");
+  const [structureError, setStructureError] = useState("");
+  const [ligandError, setLigandError] = useState("");
+  const error = structureError || ligandError;
   const pick = useRef(onPick);
   pick.current = onPick;
-  const [loaded, setLoaded] = useState(0);
+  const [loaded, setLoaded] = useState("");
   useEffect(() => {
     if (!element.current) return;
     let disposed = false;
+    const request = new AbortController();
+    setStructureError("");
+    setLoaded("");
     const s = new NGL.Stage(element.current, {
       backgroundColor: "#101c2d",
       quality: "medium",
@@ -50,10 +55,15 @@ export default function Viewer({
     });
     (async () => {
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: request.signal });
         if (!response.ok) throw new Error("구조 파일을 불러오지 못했습니다.");
-        const c: any = await s.loadFile(await response.blob(), { ext: "pdb" });
+        const blob = await response.blob();
         if (disposed) return;
+        const c: any = await s.loadFile(blob, { ext: "pdb" });
+        if (disposed) {
+          s.removeComponent(c);
+          return;
+        }
         protein.current = c;
         c.addRepresentation("cartoon", {
           colorScheme: "chainname",
@@ -65,13 +75,14 @@ export default function Viewer({
           scale: 0.7,
         });
         c.autoView();
-        setLoaded((x) => x + 1);
+        setLoaded(url);
       } catch (e) {
-        setError(String(e));
+        if (!disposed) setStructureError(String(e));
       }
     })();
     return () => {
       disposed = true;
+      request.abort();
       resize.disconnect();
       s.dispose();
       stage.current = null;
@@ -83,6 +94,7 @@ export default function Viewer({
   useEffect(() => {
     if (!protein.current) return;
     highlight.current?.dispose();
+    highlight.current = null;
     if (selected.length)
       highlight.current = protein.current.addRepresentation("ball+stick", {
         sele: selected.map(selection).join(" or "),
@@ -123,14 +135,18 @@ export default function Viewer({
   }, [center, size, loaded]);
   useEffect(() => {
     const s = stage.current;
-    if (!s || !ligand) return;
+    setLigandError("");
+    if (!s || !ligand || loaded !== url) return;
     let component: any,
       disposed = false;
+    const request = new AbortController();
     (async () => {
       try {
-        const r = await fetch(ligand);
+        const r = await fetch(ligand, { signal: request.signal });
         if (!r.ok) throw new Error("Pose 파일을 불러오지 못했습니다.");
-        const c: any = await s.loadFile(await r.blob(), { ext: "sdf" });
+        const blob = await r.blob();
+        if (disposed) return;
+        const c: any = await s.loadFile(blob, { ext: "sdf" });
         if (disposed) {
           s.removeComponent(c);
           return;
@@ -142,14 +158,15 @@ export default function Viewer({
         });
         c.autoView(400);
       } catch (e) {
-        setError(String(e));
+        if (!disposed) setLigandError(String(e));
       }
     })();
     return () => {
       disposed = true;
+      request.abort();
       if (component) s.removeComponent(component);
     };
-  }, [ligand, loaded]);
+  }, [url, ligand, loaded]);
   return (
     <div className="viewer">
       <div className="viewer-canvas" ref={element} />

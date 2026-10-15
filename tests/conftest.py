@@ -9,13 +9,14 @@ os.environ['STORAGE_ROOT'] = str(TEST_ROOT/'storage')
 os.environ['ADMIN_PASSWORD'] = 'TestAdmin123!'
 
 from dockschedule.db import Base, engine, transaction
-from dockschedule.api import app
+from dockschedule.api import app, _attempts
 from dockschedule.security import bootstrap
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture
 def client():
+    _attempts.clear()
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     with TestClient(app, headers={'X-DS-Request':'1'}) as c:
