@@ -30,6 +30,7 @@ import { useLoad } from "./useLoad";
 import "./style.css";
 
 const LazyViewer = lazy(() => import("./Viewer"));
+const LazyPoseInteractions = lazy(() => import("./PoseInteractions"));
 
 function Viewer(props: React.ComponentProps<typeof LazyViewer>) {
   return (
@@ -1672,10 +1673,14 @@ function JobDetail({ id }: { id: string }) {
               </div>
               {chosen?.affinity != null ? (
                 <>
-                  <Viewer
-                    url={`/api/receptors/${t.receptor_id}/file/pdb`}
-                    ligand={`/api/jobs/${id}/compounds/${chosen.id}/sdf`}
-                  />
+                  <Suspense fallback={<p className="muted">Pose 뷰어를 불러오는 중…</p>}>
+                    <LazyPoseInteractions
+                      key={`${id}/${chosen.id}`}
+                      receptorUrl={`/api/receptors/${t.receptor_id}/file/pdb`}
+                      ligandUrl={`/api/jobs/${id}/compounds/${chosen.id}/sdf`}
+                      path={`/jobs/${id}/compounds/${chosen.id}/interactions`}
+                    />
+                  </Suspense>
                   <div className="pose-info">
                     <p className="mono smiles">{chosen.normalized_smiles}</p>
                     <div className="actions">

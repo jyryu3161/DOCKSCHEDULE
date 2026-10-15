@@ -9,6 +9,7 @@
 - 전체 CPU 한도, 동시 학생 수, 학생별 CPU 배분 및 순차 화합물 처리
 - 중단 후 재개, 작업 취소, 실패 항목 재시도
 - 화합물당 최상 pose 1개, affinity 표, 전체 점수 CSV/TSV와 결과 ZIP
+- ProLIF 기반 단백질–리간드 상호작용 표, 잔기·원자별 3D 강조, 유형 필터와 CSV
 
 ## 실행
 
@@ -38,6 +39,6 @@ npm --prefix frontend ci
 npm --prefix frontend run build
 ```
 
-React/TypeScript/NGL, FastAPI, PostgreSQL, Redis/RQ를 사용합니다. 화학 계산은 PDBFixer/OpenMM, RDKit, Open Babel, Meeko와 체크섬을 고정한 QuickVina 바이너리로 실행합니다. 실제 서비스 통합, 재시작·취소, 80만 행 조회·export, 브라우저 검증 스크립트는 `scripts/`와 `frontend/e2e/`에 있습니다.
+React/TypeScript/NGL, FastAPI, PostgreSQL, Redis/RQ를 사용합니다. 화학 계산은 PDBFixer/OpenMM, RDKit, Open Babel, Meeko와 체크섬을 고정한 QuickVina 바이너리로 실행하며, 선택한 pose의 상호작용은 ProLIF/MDAnalysis로 분석합니다. 실제 서비스 통합, 재시작·취소, 80만 행 조회·export, 브라우저 검증 스크립트는 `scripts/`와 `frontend/e2e/`에 있습니다.
 
 자동 복구 구조와 docking score는 교육용 계산 결과입니다. PDB에 서열 정보가 없는 결손의 아미노산 종류를 추정하지 않으며, ligand pH별 protonation·tautomer 열거는 수행하지 않습니다.

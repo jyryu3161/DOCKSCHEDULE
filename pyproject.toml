@@ -10,7 +10,7 @@ dependencies = [
   "redis>=5,<7", "rq>=2.1,<3", "psutil>=6,<8",
   "rdkit>=2024.9", "openmm==8.2.0", "pdbfixer", "meeko>=0.6,<0.8",
   "gemmi>=0.6", "scipy>=1.14", "openbabel-wheel>=3.1.1",
-  "zipstream-ng>=1.8,<2",
+  "zipstream-ng>=1.8,<2", "prolif>=2.2.3,<3",
 ]
 
 [dependency-groups]

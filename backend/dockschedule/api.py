@@ -439,6 +439,29 @@ def results(task_id: str, page: int = Query(default=1, ge=1), page_size: int = Q
     return dict(total=count, page=page, rows=[compound_json(c) for c in db.scalars(q.offset((page-1)*page_size).limit(page_size))])
 
 
+@app.get('/api/jobs/{task_id}/compounds/{compound_id}/interactions')
+def interactions(task_id: str, compound_id: int, u=Depends(approved), db=Depends(get_db)):
+    from .interaction_service import AnalysisBusy, pose_interactions
+
+    t = owned(db.get(Task, task_id), u)
+    c = db.get(Compound, compound_id)
+    if c is None or c.task_id != t.id or c.status not in ('succeeded', 'partial') or c.affinity is None:
+        raise HTTPException(404, '분석할 docking pose가 없습니다.')
+    r = owned(db.get(Receptor, t.receptor_id), u)
+    if r.status != 'ready':
+        raise HTTPException(409, '전처리가 완료된 단백질이 필요합니다.')
+    receptor_path = storage.receptor_dir(r.owner_id, r.id)/'receptor.pdb'
+    pose_path = storage.compound_dir(t.owner_id, t.id, c.id)/'best.sdf'
+    # Release the DB connection before the potentially slow computation.
+    db.rollback()
+    try:
+        return pose_interactions(receptor_path, pose_path)
+    except FileNotFoundError:
+        raise HTTPException(404, '단백질 또는 pose 파일을 찾을 수 없습니다.') from None
+    except AnalysisBusy as exc:
+        raise HTTPException(503, str(exc), headers={'Retry-After': '3'}) from None
+
+
 @app.get('/api/jobs/{task_id}/compounds/{compound_id}/{format}')
 def pose(task_id: str, compound_id: int, format: str, u=Depends(approved), db=Depends(get_db)):
     t = owned(db.get(Task, task_id), u)

@@ -42,6 +42,29 @@ def test_real_pdb_repair_qvina_and_stereochemical_sdf(tmp_path,monkeypatch):
     assert Chem.MolToSmiles(Chem.RemoveHs(output),isomericSmiles=True) == Chem.MolToSmiles(Chem.MolFromSmiles(smiles),isomericSmiles=True)
     assert len(result['details']['conformers']) >= 1
     assert result['affinity'] == min(c['affinity'] for c in result['details']['conformers'] if c['status']=='succeeded')
+    from dockschedule.interactions import analyze_pose, _load_protein
+    analysis = analyze_pose(tmp_path/'receptor/receptor.pdb', tmp_path/'ligand/best.sdf')
+    assert analysis['engine'] == 'ProLIF' and analysis['interactions']
+    original = next(Chem.SDMolSupplier(str(tmp_path/'ligand/best.sdf'), removeHs=False))
+    for interaction in analysis['interactions']:
+        for atom in interaction['ligand_atoms']:
+            if atom['index'] is not None:
+                assert atom['number'] == atom['index'] + 1
+                assert atom['position'] == pytest.approx(list(original.GetConformer().GetAtomPosition(atom['index'])))
+    # Insertion codes and blank chains must not collapse two same-name residues.
+    pdb = tmp_path/'receptor/receptor.pdb'
+    lines = []
+    for line in pdb.read_text().splitlines():
+        if line.startswith(('ATOM  ', 'HETATM')):
+            line = line[:21] + ' ' + line[22:]
+            if int(line[22:26]) in (78, 100):  # both ILE
+                line = line[:22] + '  78' + ('A' if int(line[22:26]) == 78 else 'B') + line[27:]
+        lines.append(line)
+    pdb.write_text('\n'.join(lines)+'\n')
+    protein, atoms, residues, _ = _load_protein(pdb)
+    distinct = {r['key'] for r in residues}
+    assert ':78:A' in distinct and ':78:B' in distinct
+    assert protein.n_residues == len(distinct)
 
 
 @pytest.mark.integration

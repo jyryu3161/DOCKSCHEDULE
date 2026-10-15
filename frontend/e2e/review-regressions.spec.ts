@@ -30,6 +30,8 @@ async function mockApi(page: Page) {
       return route.fulfill({ json: { rows: [job("A")], total: 1 } });
     if (/\/jobs\/[^/]+\/results$/.test(path))
       return route.fulfill({ json: { total: 1, page: 1, rows: [{ id: 1, cid: "compound A", status: "failed", error: "test failure", row_number: 1 }] } });
+    if (path.endsWith("/interactions"))
+      return route.fulfill({ json: { engine: "ProLIF", engine_version: "2.2.3", interactions: [], warnings: [] } });
     if (/\/jobs\/[^/]+$/.test(path))
       return route.fulfill({ json: job(path.split("/").pop()!) });
     return route.fulfill({ json: [] });

@@ -1,5 +1,17 @@
 # 구현 검증 기록
 
+## Pose 상호작용 확장 검증 (2026-10-16)
+
+로컬 개발 환경에서 `OPENMM_CPU_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/pytest -q` 전체 51개와 frontend production build가 통과했다. 기존 Starlette 경고와 MDAnalysis의 deprecated import 경고가 있으며 테스트 실패는 없다.
+
+추가한 상호작용 테스트는 실제 ProLIF로 수소결합의 양방향 donor/acceptor·거리·각도 조건, 같은 잔기의 여러 acceptor, 방향족 고리 중심과 원자 목록, 할로젠–acceptor 거리, carboxylate 공명 원자와 염다리를 확인한다. SDF 원자 순서와 누락 수소 처리, 파일 교체·삭제·분석 중 재시도의 캐시 무효화, API 인증·소유권·pose 상태와 오류 응답도 검증한다. 기존 1L83 실제 전처리/QuickVina 테스트에 상호작용 생성, SDF 원자 좌표 대응, 빈 chain과 같은 번호/이름의 두 insertion residue가 분리되는지 확인하는 검증을 추가했다.
+
+Chromium에서 `interactions.spec.ts`와 `review-regressions.spec.ts`의 7개 시나리오가 통과했다. 상호작용 표·3D 강조·원자 라벨·유형 필터·CSV, pose 전환 시 늦은 응답 차단, 분석 실패 후 재시도와 모바일 overflow, 기존 viewer의 오류 복구와 lazy loading을 확인했다. 브라우저는 API 응답을 mock하고 실제 NGL/WebGL을 사용한다. 화학 판정은 별도의 실제 Python 테스트로 검증한다. 결과 화면은 실행 시 `test-results/browser/interactions.png`에 저장한다.
+
+1L83와 `C[C@H](O)c1ccccc1`의 별도 smoke test에서 18개 원자별 상호작용이 검출됐으며, CPU 1개의 조회용 subprocess는 약 1.65초, 캐시 재조회는 0.001초 미만이었다. 한 구조에서의 관측값이며 동시 학생 부하나 전체 receptor 크기에 대한 성능 보장은 아니다. 물 매개 결합, 금속 배위, 보조인자와 실험적 결합 에너지는 검증 범위에서 제외한다.
+
+## 초기 배포 검증 (2026-10-14)
+
 2026-10-14, 이 저장소의 단일 서버 Docker Compose 배포에서 검증했다. 실제 docking 검증과 대량 DB 검증은 서로 다른 시험이다.
 
 ## 기능 및 운영 검증

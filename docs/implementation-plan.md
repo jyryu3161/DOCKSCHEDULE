@@ -131,4 +131,18 @@ Screening 하나를 배정받은 worker는 화합물, conformer 순서로 처리
 
 ## 착수 범위
 
-첫 구현은 위의 핵심 흐름과 운영 기능을 대상으로 한다. GPU docking, 외부 서열 기반 단백질 전체 모델링, MM/GBSA, MD, 자동 상호작용 해석, 외부 공개 서비스는 이번 범위에 포함하지 않는다. 포트와 내부 접속 주소는 설치 환경을 확인해 설정한다. 핵심 흐름과 운영 기능을 구현했으며 실제 검증 결과와 지원 범위는 [검증 기록](validation.md)에 정리한다.
+첫 구현은 위의 핵심 흐름과 운영 기능을 대상으로 한다. GPU docking, 외부 서열 기반 단백질 전체 모델링, MM/GBSA, MD, 외부 공개 서비스는 이번 범위에 포함하지 않는다. 포트와 내부 접속 주소는 설치 환경을 확인해 설정한다. 핵심 흐름과 운영 기능을 구현했으며 실제 검증 결과와 지원 범위는 [검증 기록](validation.md)에 정리한다.
+
+## Pose 상호작용 분석 확장 (2026-10-16)
+
+현재 Meeko가 생성하는 결합 차수·입체화학 보존 SDF와 수소가 포함된 전처리 PDB를 기준으로 세 도구를 비교했다. 아래 적합성 평가는 이 저장소의 NGL viewer와 원자별 표에 연결하는 비용을 기준으로 한다.
+
+| 도구 | 공식 기능과 이 코드베이스에 대한 판단 |
+| --- | --- |
+| [ODDT](https://oddt.readthedocs.io/en/stable/rst/oddt.html#module-oddt.interactions) | RDKit/Open Babel을 사용하고 수소결합·할로젠·소수성·염다리·π·금속 상호작용을 지원한다. 원자 쌍과 strict 판정 배열을 반환하므로 구현 가능하다. 표에 넣을 거리·각도 및 toolkit별 원자/잔기 대응을 추가로 조립해야 한다. |
+| [ProLIF](https://prolif.readthedocs.io/en/stable/notebooks/docking.html) | RDKit 분자를 직접 사용하며 SDF docking workflow, 원래 분자 기준 `parent_indices`, 거리·각도 metadata, `count=True`로 모든 원자 조합 보존을 지원한다. 현재 Meeko→SDF 경로를 그대로 사용할 수 있어 선택했다. MDAnalysis 등 추가 의존성은 `uv.lock`으로 고정한다. |
+| [PLIP](https://github.com/pharmai/plip) | PDB complex의 다양한 상호작용과 보고서 생성에 적합하고 Open Babel을 사용한다. 이 시스템에서는 분리된 receptor/SDF를 complex로 조립하고 ligand 원자 대응을 검증하는 단계가 더 필요하므로 채택하지 않았다. |
+
+ProLIF 2.2.3으로 검증했다. 직접 만든 거리 판정으로 수소결합을 대체하지 않고 ProLIF의 원자형·각도 기준을 사용한다. 단백질은 OpenMM 잔기 template의 결합 연결을 MDAnalysis에 전달하고 명시적 수소로 결합 차수와 형식전하를 추론한다. 가까운 side chain을 공유 결합으로 잘못 연결할 수 있는 거리 기반 결합 추정은 사용하지 않는다. ProLIF의 ResidueId에는 insertion code가 없으므로 분석 중에만 고유 잔기 번호를 사용하고 출력은 원본 식별자로 되돌린다.
+
+분석 결과는 수소결합, 소수성 접촉, 염다리, π–π stacking, 양이온–π, 할로젠 결합을 표·3D 연결선으로 제공한다. 원자별 조합을 모두 보존하므로 한 잔기와 두 개 이상의 결합이 있어도 누락하지 않는다. 수소결합은 heavy donor–acceptor, π 상호작용은 고리 중심, 할로젠 결합은 halogen–acceptor를 3D 연결선의 끝점으로 사용한다. 물·금속·보조인자 분석과 에너지 해석은 현재 지원 범위 밖이며 화면에도 명시한다.
