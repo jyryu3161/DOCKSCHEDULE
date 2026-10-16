@@ -74,6 +74,7 @@ class Task(Base):
     owner_id: Mapped[int] = mapped_column(ForeignKey('users.id'), index=True)
     receptor_id: Mapped[str] = mapped_column(ForeignKey('receptors.id'), index=True)
     library_id: Mapped[str | None] = mapped_column(ForeignKey('uploads.id'))
+    source_task_id: Mapped[str | None] = mapped_column(ForeignKey('tasks.id', ondelete='CASCADE', name='task_source_fk'), index=True)
     kind: Mapped[str] = mapped_column(String(20))
     name: Mapped[str] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(20), default='queued', index=True)
@@ -113,6 +114,27 @@ class Compound(Base):
     artifact_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     elapsed: Mapped[float | None] = mapped_column(Float)
+
+
+class CompoundAnalysis(Base):
+    __tablename__ = 'compound_analyses'
+    __table_args__ = (Index('analysis_queue', 'job_id', 'status', 'compound_id'),)
+    compound_id: Mapped[int] = mapped_column(ForeignKey('compounds.id', ondelete='CASCADE'), primary_key=True)
+    job_id: Mapped[str] = mapped_column(ForeignKey('tasks.id', ondelete='CASCADE'))
+    status: Mapped[str] = mapped_column(String(20), default='pending')
+    error: Mapped[str | None] = mapped_column(Text)
+
+
+class InteractionHit(Base):
+    __tablename__ = 'interaction_hits'
+    __table_args__ = (Index('interaction_lookup', 'task_id', 'residue_key', 'kind', 'compound_id'),)
+    compound_id: Mapped[int] = mapped_column(ForeignKey('compound_analyses.compound_id', ondelete='CASCADE'), primary_key=True)
+    residue_key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(30), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey('tasks.id', ondelete='CASCADE'))
+    residue: Mapped[dict] = mapped_column(JSON)
+    count: Mapped[int] = mapped_column(Integer)
+    distance: Mapped[float] = mapped_column(Float)
 
 
 class Audit(Base):

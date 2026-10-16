@@ -36,5 +36,5 @@ export interface InteractionReport {
   warnings: string[];
 }
 
-export const residueLabel = (r: PoseInteraction["residue"]) =>
+export const residueLabel = (r: Pick<PoseInteraction["residue"], "chain" | "name" | "number" | "insertion">) =>
   `${r.chain || "(빈 chain)"}:${r.name} ${r.number}${r.insertion}`;

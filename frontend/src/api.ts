@@ -64,6 +64,7 @@ export interface Job {
   owner_id: number;
   owner_name: string;
   receptor_id: string;
+  source_task_id?: string | null;
   kind: string;
   name: string;
   status: string;

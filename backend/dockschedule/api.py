@@ -8,20 +8,22 @@ import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy import delete, func, insert, literal, select, update
 from sqlalchemy.exc import IntegrityError
 
 from .config import config
 from .db import Session, get_db
-from .models import ACTIVE, FINISHED, Audit, Compound, LoginSession, Receptor, Settings, Task, Upload, User, now, uid
+from .models import ACTIVE, FINISHED, Audit, Compound, CompoundAnalysis, LoginSession, Receptor, Settings, Task, Upload, User, now, uid
 from .schemas import Docking, LibraryOptions, Login, PasswordChange, Prepare, Register, ResourceSettings, UserUpdate
 from .security import admin, approved, bootstrap, create_session, current_user, digest, owned, password_hash, verify
 from . import library, storage
 from .structure import inspect_pdb
+from . import interaction_index as ix
 
 
 @asynccontextmanager
@@ -56,7 +58,7 @@ def user_json(u):
 
 
 def task_json(t, db=None, owner_name=None):
-    data = {k: getattr(t, k) for k in ('id', 'owner_id', 'receptor_id', 'kind', 'name', 'status', 'parameters', 'cpu_ids',
+    data = {k: getattr(t, k) for k in ('id', 'owner_id', 'receptor_id', 'source_task_id', 'kind', 'name', 'status', 'parameters', 'cpu_ids',
                                       'total', 'completed', 'failed', 'cancel_requested', 'error', 'created_at', 'started_at', 'finished_at')}
     if db:
         data['owner_name'] = db.get(User, t.owner_id).name
@@ -406,9 +408,15 @@ def retry(task_id: str, u=Depends(approved), db=Depends(get_db)):
     t = owned(db.get(Task, task_id, with_for_update=True, populate_existing=True), u)
     if t.status not in ('partial', 'failed', 'cancelled') or t.cpu_ids or t.worker_pid is not None:
         raise HTTPException(409, '실행 종료와 자원 반환 후 재시도할 수 있습니다.')
+    if t.kind == 'interactions':
+        raise HTTPException(409, '원본 screening의 상호작용 분석에서 미분석·실패 항목을 다시 요청하세요.')
+    if ix.active_analysis(db, t.id):
+        raise HTTPException(409, '상호작용 분석을 취소하고 자원이 반환된 후 docking을 재시도하세요.')
     t.status, t.cancel_requested, t.error, t.finished_at = 'queued', False, None, None
     t.run_id = None
     if t.kind == 'screen':
+        ix.invalidate(db, select(Compound.id).where(Compound.task_id == t.id,
+            Compound.status.in_(['failed', 'running', 'partial']), Compound.cid != '', Compound.smiles != ''))
         db.execute(update(Compound).where(Compound.task_id == t.id, Compound.status.in_(['failed', 'running', 'partial']),
                                           Compound.cid != '', Compound.smiles != '').values(
             status='pending', attempts=0, error=None, affinity=None, normalized_smiles=None, details={}, elapsed=None))
@@ -425,18 +433,126 @@ def compound_json(c):
     return {k: getattr(c, k) for k in ('id', 'row_number', 'cid', 'smiles', 'normalized_smiles', 'status', 'affinity', 'error', 'elapsed', 'details')}
 
 
+def interaction_filters(interaction: bool = False, residue: list[str] = Query(default=[], max_length=100),
+                        kind: list[str] = Query(default=[], max_length=6), match: Literal['any', 'all'] = 'any'):
+    residues, kinds = sorted(set(residue)), sorted(set(kind))
+    if any(len(r) > 80 for r in residues) or any(k not in ix.KINDS for k in kinds):
+        raise HTTPException(422, '유효한 잔기와 상호작용 타입을 선택하세요.')
+    if interaction and (not residues or not kinds):
+        raise HTTPException(422, '잔기와 상호작용 타입을 하나 이상 선택하세요.')
+    return dict(enabled=interaction, residues=residues, kinds=kinds, match=match)
+
+
+def validate_residues(db, task, filters):
+    if filters['enabled']:
+        residues = db.get(Receptor, task.receptor_id).structure.get('residues', [])
+        keys = {r['key'] for r in residues if r.get('category') == 'protein'}
+        if not set(filters['residues']).issubset(keys):
+            raise HTTPException(422, '전처리된 단백질에 없는 잔기입니다.')
+
+
+@app.get('/api/jobs/{task_id}/interaction-index')
+def index_status(task_id: str, u=Depends(approved), db=Depends(get_db)):
+    t = owned(db.get(Task, task_id), u)
+    if t.kind != 'screen':
+        raise HTTPException(409, 'Screening 결과에서 상호작용을 분석하세요.')
+    ids = ix.eligible(t.id).with_only_columns(Compound.id)
+    total = db.scalar(select(func.count()).select_from(ids.subquery()))
+    counts = dict(db.execute(select(CompoundAnalysis.status, func.count()).where(
+        CompoundAnalysis.compound_id.in_(ids)).group_by(CompoundAnalysis.status)).all())
+    latest = db.scalar(select(Task).where(Task.source_task_id == t.id).order_by(Task.created_at.desc(), Task.id.desc()).limit(1))
+    failures = db.execute(select(Compound.id, Compound.cid, CompoundAnalysis.error).join(
+        CompoundAnalysis, CompoundAnalysis.compound_id == Compound.id).where(Compound.task_id == t.id,
+        CompoundAnalysis.status == 'failed').order_by(Compound.id).limit(10)).all()
+    return dict(eligible=total, analyzed=counts.get('succeeded', 0), failed=counts.get('failed', 0),
+        remaining=total-counts.get('succeeded', 0)-counts.get('failed', 0), job=task_json(latest) if latest else None,
+        busy=ix.active_analysis(db, t.id) is not None,
+        failures=[dict(compound_id=i, cid=cid, error=error) for i, cid, error in failures],
+        residues=[r for r in db.get(Receptor, t.receptor_id).structure.get('residues', []) if r.get('category') == 'protein'])
+
+
+@app.post('/api/jobs/{task_id}/interaction-index', status_code=201)
+def build_index(task_id: str, u=Depends(approved), db=Depends(get_db)):
+    t = owned(db.get(Task, task_id), u)
+    require_capacity(db, db.get(User, t.owner_id))
+    t = owned(db.get(Task, task_id, with_for_update=True, populate_existing=True), u)
+    if t.kind != 'screen' or db.get(Receptor, t.receptor_id).status != 'ready':
+        raise HTTPException(409, '준비된 단백질과 screening 결과가 필요합니다.')
+    if ix.active_analysis(db, t.id):
+        raise HTTPException(409, '이미 요청한 상호작용 분석이 있습니다. 완료 또는 취소 후 다시 요청하세요.')
+    ids = ix.eligible(t.id).with_only_columns(Compound.id)
+    # Successful entries survive later batches; cancelled/failed entries are resumable.
+    db.execute(delete(CompoundAnalysis).where(CompoundAnalysis.compound_id.in_(ids), CompoundAnalysis.status != 'succeeded'))
+    candidates = ids.where(~select(CompoundAnalysis.compound_id).where(CompoundAnalysis.compound_id == Compound.id).exists())
+    total = db.scalar(select(func.count()).select_from(candidates.subquery()))
+    if not total:
+        raise HTTPException(409, '새로 분석할 docking pose가 없습니다.')
+    batch = Task(owner_id=t.owner_id, receptor_id=t.receptor_id, source_task_id=t.id, kind='interactions',
+                 name='상호작용 · '+t.name[:190], parameters={'schema_version': 1}, total=total)
+    db.add(batch)
+    db.flush()
+    db.execute(insert(CompoundAnalysis).from_select(['compound_id', 'job_id', 'status'],
+        candidates.add_columns(literal(batch.id), literal('pending'))))
+    audit(db, u, 'analyze_library', t.id, {'job_id': batch.id, 'total': total})
+    db.commit()
+    return task_json(batch)
+
+
 @app.get('/api/jobs/{task_id}/results')
 def results(task_id: str, page: int = Query(default=1, ge=1), page_size: int = Query(default=50, ge=1, le=200),
-            search: str = '', status: str = '', sort: str = 'affinity', u=Depends(approved), db=Depends(get_db)):
-    owned(db.get(Task, task_id), u)
-    q = select(Compound).where(Compound.task_id == task_id)
-    if search:
-        q = q.where(Compound.cid.contains(search, autoescape=True))
-    if status:
-        q = q.where(Compound.status == status)
+            search: str = '', status: str = '', sort: str = 'affinity', filters=Depends(interaction_filters),
+            u=Depends(approved), db=Depends(get_db)):
+    t = owned(db.get(Task, task_id), u)
+    validate_residues(db, t, filters)
+    q = ix.candidate_query(task_id, filters) if filters['enabled'] else select(Compound).where(Compound.task_id == task_id)
+    q = ix.text_filters(q, search, status)
     count = db.scalar(select(func.count()).select_from(q.subquery()))
     q = q.order_by(Compound.affinity.asc().nulls_last(), Compound.row_number) if sort == 'affinity' else q.order_by(Compound.row_number)
-    return dict(total=count, page=page, rows=[compound_json(c) for c in db.scalars(q.offset((page-1)*page_size).limit(page_size))])
+    rows = [compound_json(c) for c in db.scalars(q.offset((page-1)*page_size).limit(page_size))]
+    if filters['enabled']:
+        hits = ix.matching_hits(db, task_id, [c['id'] for c in rows], filters)
+        for c in rows:
+            c['matched_interactions'] = hits[c['id']]
+    return dict(total=count, page=page, rows=rows)
+
+
+def candidate_csv(task_id, filters, search, status):
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    exported_at = now().isoformat()+'Z'
+    writer.writerow(['row_number', 'CID', 'SMILES', 'affinity_kcal_mol', 'matched_interactions', 'residue_match',
+                     'selected_residues', 'selected_types', 'engine_version', 'exported_at_utc'])
+    yield '\ufeff'+buffer.getvalue()
+    last = 0
+    while True:
+        with Session() as db:
+            q = ix.text_filters(ix.candidate_query(task_id, filters), search, status)
+            rows = list(db.scalars(q.where(Compound.id > last).order_by(Compound.id).limit(500)))
+            if not rows:
+                break
+            hits = ix.matching_hits(db, task_id, [c.id for c in rows], filters)
+            versions = dict(db.execute(select(CompoundAnalysis.compound_id, Task.parameters).join(
+                Task, Task.id == CompoundAnalysis.job_id).where(CompoundAnalysis.compound_id.in_([c.id for c in rows]))).all())
+        buffer.seek(0)
+        buffer.truncate(0)
+        safe = lambda s: "'"+s if isinstance(s, str) and s.startswith(('=', '+', '-', '@', '\t', '\r')) else s
+        for c in rows:
+            summary = '; '.join(f"{h['residue']['chain'] or '(blank)'}:{h['residue']['name']} {h['residue']['number']}{h['residue']['insertion']} | {h['kind']} | {h['count']} contacts | min {h['distance']:.3f} A" for h in hits[c.id])
+            writer.writerow([c.row_number, safe(c.cid), safe(c.smiles), c.affinity, safe(summary), filters['match'],
+                safe('; '.join(filters['residues'])), '; '.join(filters['kinds']), versions[c.id].get('engine_version', ''), exported_at])
+        yield buffer.getvalue()
+        last = rows[-1].id
+
+
+@app.get('/api/jobs/{task_id}/interaction-candidates.csv')
+def export_candidates(task_id: str, search: str = '', status: str = '', filters=Depends(interaction_filters),
+                      u=Depends(approved), db=Depends(get_db)):
+    t = owned(db.get(Task, task_id), u)
+    if not filters['enabled']:
+        raise HTTPException(422, '상호작용 필터를 적용하세요.')
+    validate_residues(db, t, filters)
+    return StreamingResponse(candidate_csv(task_id, filters, search, status), media_type='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="candidates-{task_id}.csv"'})
 
 
 @app.get('/api/jobs/{task_id}/compounds/{compound_id}/interactions')
@@ -543,6 +659,10 @@ def delete_job(task_id: str, u=Depends(approved), db=Depends(get_db)):
     t = owned(db.get(Task, task_id, with_for_update=True), u)
     if t.status not in FINISHED or t.cpu_ids or t.worker_pid is not None or t.kind != 'screen':
         raise HTTPException(409, '종료된 screening 작업만 삭제할 수 있습니다.')
+    if ix.active_analysis(db, t.id):
+        raise HTTPException(409, '상호작용 분석을 취소하고 자원이 반환된 후 삭제하세요.')
+    for child in db.scalars(select(Task).where(Task.source_task_id == t.id)):
+        shutil.rmtree(storage.task_dir(child.owner_id, child.id), ignore_errors=True)
     shutil.rmtree(storage.task_dir(t.owner_id, t.id), ignore_errors=True)
     audit(db, u, 'delete_job', t.id)
     db.delete(t)

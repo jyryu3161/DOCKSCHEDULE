@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { api, post, Job, labels, Residue, Structure, User } from "./api";
 import { useLoad } from "./useLoad";
+import LibraryInteractions from "./LibraryInteractions";
+import { interactionKinds, residueLabel } from "./interactions";
 import "./style.css";
 
 const LazyViewer = lazy(() => import("./Viewer"));
@@ -534,7 +536,7 @@ function Dashboard({ user }: { user: User }) {
                 {rows.map((j) => (
                   <tr
                     key={j.id}
-                    onClick={() => go("job/" + j.id)}
+                    onClick={() => go("job/" + (j.source_task_id || j.id))}
                     className="clickable"
                   >
                     <td>
@@ -551,6 +553,7 @@ function Dashboard({ user }: { user: User }) {
                           <small>
                             {j.kind === "prepare"
                               ? "Receptor preparation"
+                              : j.kind === "interactions" ? `${j.total.toLocaleString()} poses · ProLIF`
                               : `${j.total.toLocaleString()} compounds · QuickVina`}
                           </small>
                         </div>
@@ -1436,10 +1439,11 @@ function JobDetail({ id }: { id: string }) {
     [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
     [status, setStatus] = useState(""),
+    [interactionQuery, setInteractionQuery] = useState(""),
     [chosen, setChosen] = useState<any>(null),
     [error, setError] = useState("");
   const results = useLoad(
-      `/jobs/${id}/results?page=${page}&search=${encodeURIComponent(search)}&status=${status}`,
+      `/jobs/${id}/results?page=${page}&search=${encodeURIComponent(search)}&status=${status}&${interactionQuery}`,
       4000,
     ),
     t = job.data;
@@ -1462,6 +1466,10 @@ function JobDetail({ id }: { id: string }) {
   const finished = ["completed", "partial", "failed", "cancelled"].includes(
     t.status,
   );
+  if (t.kind === "interactions") return <section className="panel form-panel">
+    <h1>{t.name}</h1><Badge status={t.status} /><p>{t.completed + t.failed}/{t.total}개 처리</p>
+    <button className="primary" onClick={() => go(`job/${t.source_task_id}`)}>원본 결과에서 후보 찾기</button>
+  </section>;
   return (
     <>
       <button className="back" onClick={() => go("dashboard")}>
@@ -1551,23 +1559,26 @@ function JobDetail({ id }: { id: string }) {
         </section>
       ) : (
         <>
+          <LibraryInteractions key={id} taskId={id} query={interactionQuery} onChange={(query) => {
+            setInteractionQuery(query); setPage(1); setChosen(null);
+          }} />
           <div className="results-grid">
             <section className="panel result-list">
               <div className="panel-heading result-heading">
-                <h2>화합물별 결과</h2>
+                <h2>{interactionQuery ? "상호작용 일치 후보" : "화합물별 결과"}</h2>
                 <div className="actions">
                   <a
                     className="secondary small"
-                    href={`/api/jobs/${id}/scores?format=csv`}
+                    href={interactionQuery ? `/api/jobs/${id}/interaction-candidates.csv?${interactionQuery}&search=${encodeURIComponent(search)}&status=${status}` : `/api/jobs/${id}/scores?format=csv`}
                   >
                     <ArrowDownToLine size={14} />
-                    CSV
+                    {interactionQuery ? "후보 CSV" : "CSV"}
                   </a>
                   <a
                     className="secondary small"
                     href={`/api/jobs/${id}/scores?format=tsv`}
                   >
-                    TSV
+                    전체 TSV
                   </a>
                   <a
                     className="secondary small"
@@ -1615,6 +1626,7 @@ function JobDetail({ id }: { id: string }) {
                         Affinity <small>kcal/mol</small>
                       </th>
                       <th>상태</th>
+                      {interactionQuery && <th>일치한 상호작용</th>}
                       <th />
                     </tr>
                   </thead>
@@ -1640,6 +1652,9 @@ function JobDetail({ id }: { id: string }) {
                         <td>
                           <Badge status={c.status} />
                         </td>
+                        {interactionQuery && <td className="candidate-matches">{c.matched_interactions?.map((h: any) =>
+                          <small key={`${h.residue.key}/${h.kind}`} className="block">{residueLabel(h.residue)} · {interactionKinds[h.kind]?.label}<br />
+                            {h.count}개 접촉 · 최소 {h.distance.toFixed(2)} Å</small>)}</td>}
                         <td>
                           <ChevronRight size={14} />
                         </td>
@@ -1647,6 +1662,7 @@ function JobDetail({ id }: { id: string }) {
                     ))}
                   </tbody>
                 </table>
+                {interactionQuery && results.data?.total === 0 && <p className="hint padded">분석 완료 항목 중 선택한 조건에 일치하는 후보가 없습니다.</p>}
               </div>
               <div className="pagination">
                 <span>{results.data?.total.toLocaleString() || 0}개 결과</span>

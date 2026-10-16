@@ -43,7 +43,7 @@ def test_csrf_and_duplicate_user(client):
 def test_scheduler_resource_invariants():
     values=dict(cpu_budget=8,max_students=2,default_cpus=4,paused=False)
     users={i:NS(status='approved',cpu_override=None) for i in range(1,5)}
-    waiting=[NS(owner_id=i,cancel_requested=False) for i in [1,1,2,3]]
+    waiting=[NS(owner_id=i,cancel_requested=False,kind='screen') for i in [1,1,2,3]]
     choices=choose_tasks(waiting,[],users,values,list(range(16)))
     assert [t.owner_id for t,c in choices]==[1,2]
     assert len({x for _,c in choices for x in c})==8

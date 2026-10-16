@@ -140,10 +140,10 @@ def interaction_records(ligand, protein, ligand_atoms, protein_atoms, atom_resid
     return rows
 
 
-def analyze_pose(receptor: Path, pose: Path):
+def analyze_pose(receptor: Path, pose: Path, prepared=None):
     import prolif as plf
 
-    protein, protein_atoms, residues, excluded = _load_protein(receptor)
+    protein, protein_atoms, residues, excluded = prepared if prepared is not None else _load_protein(receptor)
     ligand, ligand_atoms, added = _load_ligand(pose)
     warnings = ['전처리된 단백질의 아미노산 잔기와 선택한 pose만 분석합니다. 물 매개 결합, 금속 배위 및 보조인자 상호작용은 포함하지 않습니다.']
     if excluded:

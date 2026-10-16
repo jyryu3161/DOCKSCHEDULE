@@ -1,5 +1,13 @@
 # 구현 검증 기록
 
+## 라이브러리 상호작용 후보 검색 (2026-10-16)
+
+Python 전체 57개 테스트, frontend production build, Chromium 9개 시나리오가 통과했다. 추가 검증은 chain·insertion code를 포함한 정확한 잔기 매칭, ANY/ALL 잔기 조건과 타입 OR 조건, 페이지네이션, 검색과 CSV 조건 일치, CSV 수식 방지, 소유권, 분석 상태 구분, 취소 후 이어하기, docking 재시도의 인덱스 무효화, 연관 데이터 삭제와 CPU 1개 예약을 포함한다. SQLite migration upgrade/downgrade 중 기존 작업과 compound 보존도 확인했다.
+
+새 Docker 이미지와 별도 PostgreSQL DB에서 기존 schema를 만든 뒤 migration을 적용해 원본 작업 보존을 확인했다. 실제 전처리 PDB와 pose 2개, 결합 부위에서 100 Å 이동한 pose 1개, 깨진 SDF 1개로 실제 scheduled runner의 분석 경로를 실행했다. ProLIF 2.2.3에서 성공 3개(접촉 없음 포함), 실패 1개, 지정 잔기·타입에 맞는 후보 2개로 구분됐다. 해당 실행은 약 4.65초였으며, 테스트 DB와 파일은 종료 시 제거했다. 대규모 라이브러리 전체의 화학 분석 처리량을 측정한 결과는 아니다.
+
+브라우저에서는 잔기와 타입 선택, 모든 잔기 조건, 후보 CSV, 후보에서 3D pose 선택, 분석 큐 상태와 취소, 모바일 화면을 확인했다. 브라우저 API는 mock하고 NGL은 실제로 실행했으며, 화학 계산과 PostgreSQL 저장은 위의 별도 실제 worker 검증으로 확인했다.
+
 ## Pose 상호작용 확장 검증 (2026-10-16)
 
 로컬 개발 환경에서 `OPENMM_CPU_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/pytest -q` 전체 51개와 frontend production build가 통과했다. 기존 Starlette 경고와 MDAnalysis의 deprecated import 경고가 있으며 테스트 실패는 없다.

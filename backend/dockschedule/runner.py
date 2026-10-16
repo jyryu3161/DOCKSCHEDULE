@@ -50,6 +50,7 @@ def run_task(task_id, run_id):
         source = db.get(Upload, receptor.upload_id).path
         receptor_owner = receptor.owner_id
         params, owner, receptor_id, kind, cpus = task.parameters, task.owner_id, task.receptor_id, task.kind, len(task.cpu_ids)
+        source_task_id = task.source_task_id
     try:
         if kind == 'prepare':
             from .chemistry import prepare_receptor
@@ -62,6 +63,11 @@ def run_task(task_id, run_id):
                 account_task(db, task)
                 receptor.report, receptor.structure, receptor.status = result['report'], result['structure'], 'ready'
                 task.status, task.finished_at = 'completed', now()
+            return
+
+        if kind == 'interactions':
+            from .interaction_worker import run_index
+            run_index(task_id, run_id, owner, source_task_id, receptor_dir(receptor_owner, receptor_id)/'receptor.pdb')
             return
 
         # Preload chemistry in the job process. Forked per-compound processes isolate

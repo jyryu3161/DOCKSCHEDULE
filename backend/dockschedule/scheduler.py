@@ -35,7 +35,7 @@ def choose_tasks(waiting, active, users, values, available):
         user = users.get(task.owner_id)
         if task.cancel_requested or user is None or user.status != 'approved' or task.owner_id in active_users:
             continue
-        count = user.cpu_override or values['default_cpus']
+        count = 1 if task.kind == 'interactions' else user.cpu_override or values['default_cpus']
         if len(active_users) >= values['max_students']:
             break
         if count > remaining or count > len(free):
@@ -87,7 +87,12 @@ class Scheduler:
                 return
             cutoff = now()-timedelta(days=days)
             for task in db.scalars(select(Task).where(Task.kind == 'screen', Task.status.in_(FINISHED),
-                                                      Task.worker_pid.is_(None), Task.finished_at < cutoff).limit(100)):
+                                                      Task.worker_pid.is_(None), Task.finished_at < cutoff).limit(100).with_for_update()):
+                from .interaction_index import active_analysis
+                if active_analysis(db, task.id):
+                    continue
+                for child in db.scalars(select(Task).where(Task.source_task_id == task.id)):
+                    shutil.rmtree(task_dir(child.owner_id, child.id), ignore_errors=True)
                 shutil.rmtree(task_dir(task.owner_id, task.id), ignore_errors=True)
                 db.add(Audit(action='retention_delete', target=task.id, detail={'retention_days': days, 'owner_id': task.owner_id}))
                 db.delete(task)
