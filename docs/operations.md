@@ -1,98 +1,90 @@
-# DOCKSCHEDULE 운영 안내
+# 운영
 
-이 서비스는 학생의 PDB와 SMILES library를 받아 CPU에서 QuickVina 2.1을 실행한다. PostgreSQL에 진행 상태를 기록하고, Redis와 RQ로 계산 worker를 실행한다. Docker Compose 프로젝트 이름은 `dockschedule`이다.
+x86_64 Linux에서 Docker Engine + Compose로 단일 서버에 배포한다. Compose 프로젝트 이름은 `dockschedule`, 서비스는 `db`, `redis`, `api`, `scheduler`, `web`이다.
 
-## 설치와 접속
+## 최초 설치 (운영)
 
-x86_64 Linux, Docker Engine과 Compose를 사용한다. 저장소에서 `python3 scripts/install.py`를 실행하면 관리자 초기 비밀번호를 입력받고 서비스를 구성한다. 기존 `.env`가 있으면 다시 초기화하지 않는다. 최초 관리자 ID는 `admin`이다. 변경한 관리자 비밀번호는 DB에 hash로 저장되며, 서비스를 재시작해도 설치 당시 비밀번호로 되돌리지 않는다.
+전제: Docker Engine과 Compose, Python 3, 인터넷(이미지 빌드 중 QuickVina 바이너리를 내려받음).
 
-`.env`의 `BIND_IP`, `APP_PORT`, `ALLOWED_NETWORKS`를 운영 환경에 맞게 지정한다. 예를 들어 서버 주소가 `103.49.46.62`이고 학생의 접속 대역이 `103.49.46.0/25`라면 해당 IP에 웹 포트를 바인딩하고 그 CIDR을 허용 목록에 넣는다. CIDR은 접속하는 학생의 실제 source IP 기준이다. 다른 학내 subnet은 학교에서 확인한 대역만 추가한다. IP와 포트로 접속하며 DB와 Redis 포트는 호스트에 공개하지 않는다.
+```bash
+python3 scripts/install.py
+```
 
-기본 설치는 `127.0.0.1:8890`으로 시작한다. 설정 변경 후 `docker compose up -d`로 반영한다. Nginx는 localhost와 명시한 학내 대역만 허용한다. Docker의 포트 전달을 통해 들어오는 호스트 로컬 연결을 위해 해당 Docker bridge의 gateway 주소도 허용한다. 임의의 `X-Forwarded-For` 헤더로 접근 제한을 우회할 수 없도록 프록시가 실제 source 주소로 덮어쓴다.
+1. `.env`가 없으면 관리자 초기 비밀번호를 입력받아(`ADMIN_PASSWORD` 환경변수로 대체 가능) `.env`(권한 600)를 만든다. 이미 있으면 건드리지 않는다. 비밀번호는 8자 이상, 개행·작은따옴표 불가.
+2. `docker compose up --build -d`가 이미지를 빌드하고 서비스를 시작한다. 시작 순서는 `db`·`redis` healthy → `api`(시작 때 `alembic upgrade head`, 첫 실행이면 `admin` 계정 생성) healthy → `scheduler`, `web`. 이 순서를 바꾸면 scheduler가 스키마 없이 시작해 실패한다.
+3. 기본 접속은 `http://127.0.0.1:8890`, 관리자 ID는 `admin`.
 
-`COOKIE_SECURE=false`는 학내 HTTP 접속용 설정이다. 학교 HTTPS reverse proxy를 추가한다면 인증서와 origin 전달을 구성하고 `COOKIE_SECURE=true`로 전환한다. `.env`와 백업은 비공개 파일로 관리한다.
+## 환경 설정 (`.env`)
 
-## 학생 사용 순서
+| 변수 | 역할 / 유효 범위 |
+| --- | --- |
+| `ADMIN_PASSWORD` | 최초 실행 때만 `admin` 계정 생성에 쓰인다. 이후 변경은 DB에 저장된 hash가 기준이다. 비어 있고 `admin`이 없으면 api 시작 실패. |
+| `POSTGRES_PASSWORD` | DB 비밀번호(설치 스크립트가 무작위 생성). 이미 만든 DB 볼륨이 있으면 바꾸어도 DB 안의 비밀번호는 바뀌지 않는다. |
+| `BIND_IP`, `APP_PORT` | web이 호스트에 게시되는 주소·포트(기본 `127.0.0.1:8890`). 학내 제공 시 서버의 학내 IP를 지정한다. |
+| `ALLOWED_NETWORKS` | 쉼표로 구분한 허용 CIDR. 학생의 실제 접속 source 주소 기준이며 `0.0.0.0/0`은 금지. 기본 `127.0.0.0/8,::1/128`. |
+| `COOKIE_SECURE` | 학내 HTTP면 `false`, HTTPS reverse proxy 뒤면 `true`. |
+| `SESSION_HOURS`, `MAX_UPLOAD_MB` | (선택) 로그인 유효시간(기본 12), 업로드 한도 MB(기본 100). 업로드 한도를 올리면 `frontend/nginx.conf`의 `client_max_body_size`도 함께 올려야 한다. |
 
-1. ID, 이름, 학번, 비밀번호로 가입하고 관리자의 승인을 기다린다.
-2. 새 Screening에서 PDB를 업로드한다. model, chain, 유지할 금속과 보조인자, 수소 추가 pH를 확인한 뒤 전처리를 요청한다.
-3. 전처리 완료된 단백질을 선택하고 sequence 또는 structure viewer에서 잔기를 선택한다. 중심 좌표와 박스 크기를 직접 조정할 수도 있다.
-4. CSV 또는 TSV library를 업로드한다. 구분자, 인코딩, header 여부를 지정하고 미리보기에서 CID와 SMILES 컬럼을 선택한다. Excel의 첫 줄 `sep=,` 같은 안내는 자동으로 건너뛴다. 빈 컬럼명과 중복 컬럼명은 선택할 수 있게 자동 표기하며, `Catalog ID`도 CID 후보로 인식한다.
-5. Conformer 수와 exhaustiveness를 설정하고 제출한다. 기본 conformer 1개를 RDKit으로 생성·최소화하며, 최종 결과는 화합물당 best pose 1개다.
-6. 작업 화면에서 진행 중 결과를 조회한다. 점수 CSV와 TSV에는 실패와 미완료 행도 포함된다. ZIP에는 receptor, 최상 pose, 점수표와 실행 설정이 들어간다.
-7. 성공한 화합물을 선택하면 pose 아래에 상호작용 표가 나타난다. 수소결합, 소수성 접촉, 염다리, π–π, 양이온–π, 할로젠 결합을 유형별로 필터링할 수 있다. 행을 클릭하면 해당 잔기와 ligand 원자를 강조하고 거리·라벨을 표시한다. `리간드 원자 번호`는 SDF의 1부터 시작하는 원자 번호이며, `상호작용 CSV`는 현재 필터에 표시되는 모든 행을 내려받는다.
-8. 라이브러리에서 특정 잔기와 상호작용하는 후보를 찾으려면 결과 상단의 `라이브러리 상호작용 분석`을 누른다. 분석 후 잔기와 수소결합 등의 타입을 선택하고 `후보 찾기`를 누르면 아래 결과 목록이 필터링된다. `후보 CSV`는 같은 잔기·타입·CID 검색·상태 조건을 적용한다. 후보 행을 클릭하면 기존 pose 뷰어에서 원자별 결합을 확인할 수 있다.
+`DATABASE_URL`, `REDIS_URL`, `STORAGE_ROOT`, `QVINA_BINARY`는 Compose가 컨테이너 환경에 주입한다. 설정을 바꾼 뒤에는 `docker compose up -d`로 반영한다.
 
-브라우저를 닫아도 계산은 계속된다. 실패하거나 취소한 작업은 완료된 화합물을 유지한 상태로 미완료 및 부분 실패 항목을 재시도할 수 있다. CSV 문자열이 Excel 수식으로 실행되지 않게 필요한 셀에는 작은따옴표가 앞에 붙는다.
+관리자 화면에서 바꾸는 값(전체 CPU 한도, 동시 학생 수, 학생당 CPU, library·conformer·exhaustiveness 상한, 학생별 대기 작업 수, 화합물 시간 제한, 전처리 시간 제한, 재시도 횟수, 저장 한도, 보존 기간, 신규 배정 일시 중지)는 DB에 저장되며 새로 배정되는 작업부터 적용된다. 단 `compound_timeout`과 `max_retries`는 작업 제출 시점에 그 작업의 파라미터로 복사되므로 이미 제출된 작업(재시도 포함)에는 변경이 반영되지 않는다. `preparation_timeout`, `paused`, CPU 관련 값은 매번 DB에서 읽는다. 기본값은 CPU 한도 56, 동시 학생 8, 학생당 CPU 4, 화합물 상한 100,000이다.
 
-Screening 작업 목록의 `페이지당 표시`에서 10·20·50·100·200개를 선택할 수 있다. 선택은 같은 브라우저에 저장되며, 검색·상태 필터에 해당하는 전체 개수와 페이지를 표시한다. 작업 목록 표시 개수와 library의 화합물 개수 상한은 별도 설정이다.
+## 개발 환경
 
-작업당 library 화합물 상한의 기본값은 100,000개다. 관리자는 `Library 최대 화합물 수`에서 1–100,000개 범위로 조정할 수 있다.
+```bash
+uv sync
+uv run python scripts/download-qvina.py          # tools/qvina2.1 (체크섬 검증)
+npm --prefix frontend ci
+```
 
-## Pose 상호작용 분석
-
-기존 도킹 결과도 전처리 `receptor.pdb`와 `best.sdf`가 있으면 다시 docking하지 않고 분석한다. 단백질 chain, 잔기 번호와 insertion code를 유지하며 ligand 원자 번호는 내려받은 SDF의 원자 순서와 일치한다. 표에는 각도 계산에 참여한 수소·인접 원자와 방향족 고리 원자도 포함한다. 수소결합 거리는 donor–acceptor 간 거리이고 `DHA_angle`은 donor–H–acceptor 각도다. π 상호작용은 고리 중심, 할로젠 결합은 할로젠–acceptor 거리를 표시한다.
-
-분석은 ProLIF의 원자형·거리·각도 조건에 따른 후보 검출이다. 수소결합은 3.5 Å 이하이면서 DHA 130–180°, 소수성 접촉과 염다리는 4.5 Å 이하가 기본값이다. 단백질의 수소 위치와 ligand의 원래 형식전하에 의존하며 protonation/tautomer를 다시 열거하지 않는다. 물 매개 결합, 금속 배위와 보조인자는 분석 대상에서 제외한다. 검출 0개와 분석 실패를 별도로 표시하며, 실패해도 pose 조회와 다운로드는 가능하다.
-
-조회용 API는 `/api/jobs/{task_id}/compounds/{compound_id}/interactions`다. 기존 소유권 검사를 적용하고 성공·부분 성공 pose만 받는다. 단일 API 프로세스에서 분석을 하나씩 실행하며, 낮은 우선순위의 별도 프로세스를 CPU 1개·45초로 제한한다. 이는 docking scheduler의 CPU 예약과 별도인 웹 서비스의 부가 작업이다. 동시 요청이 3초 내 실행권을 얻지 못하면 503과 재시도 안내를 반환한다. 최근 32개 보고서를 메모리에 캐시하고 파일 변경 시 무효화하며, 별도 영속 결과 파일이나 DB migration은 필요 없다. 여러 API worker로 확장할 경우 이 제한과 캐시는 worker별로 적용된다.
-
-업데이트는 개발 환경에서 `uv sync`와 frontend build로 반영한다. Docker 배포에는 API와 frontend 이미지 재빌드가 필요하다. 이 기능을 적용하기 위해 기존 screening 작업이나 데이터를 초기화할 필요는 없다.
-
-## 라이브러리 잔기·타입별 후보 검색
-
-잔기 선택은 전처리된 단백질의 chain·번호·insertion code를 기준으로 한다. 수소결합, 소수성 접촉, 염다리, π–π, 양이온–π, 할로젠 결합을 여러 개 선택할 수 있다. `선택한 잔기 중 하나 이상`은 어느 잔기에서든 선택한 타입 중 하나가 검출되면 후보가 된다. `선택한 모든 잔기`는 각 잔기마다 선택한 타입 중 하나 이상이 있어야 한다. 예를 들어 A:ASP 25와 A:LYS 50, 수소결합, 모든 잔기를 고르면 두 잔기 모두와 수소결합하는 화합물만 표시한다. 잔기마다 서로 다른 필수 타입을 지정하는 조건은 지원하지 않는다.
-
-분석 요청은 그 시점에 생성된 성공·부분 성공의 best pose를 대상으로 한다. 새로 생성된 pose와 실패·취소된 분석은 `미분석·실패 항목 분석`으로 이어서 처리한다. 상호작용이 0개인 분석 성공 항목은 재계산하지 않는다. 미분석·실패는 후보 검색에서 제외하며 화면에 각각 개수를 표시한다. 진행 중 검색/CSV에는 저장된 성공 결과만 포함되므로 전체 분석 완료 후 최종 후보를 추출한다. CSV는 입력 순서로 화합물당 한 행을 내보내며, 일치한 잔기·타입·접촉 수·최소 거리와 검색 조건, 엔진 버전을 포함한다. 후보 CSV는 현재 검색을 적용하고 `전체 TSV`와 `전체 ZIP`은 전체 docking 결과를 제공한다.
-
-분석은 기존 scheduler의 `interactions` 작업으로 CPU 1개를 예약한다. 사용자당 동시 작업 1개, 전체 CPU·동시 학생·대기 작업 한도를 그대로 적용하므로 같은 사용자의 docking이 끝난 뒤 실행된다. 단백질을 한 번 준비하고 pose마다 별도 프로세스에서 최대 45초 동안 계산한다. DB에 화합물의 성공/실패와 잔기·타입별 접촉 수·최소 거리만 저장하며, 조회 때 재분석하지 않는다. 원자별 전체 표는 기존 pose 조회 API에서 분석한다. 재시작 후 미완료 항목부터 재개하고 분석 취소는 docking 결과를 보존한다.
-
-상태/요청 API는 `GET/POST /api/jobs/{task_id}/interaction-index`다. `/results`에 `interaction=true&residue=A%3A25%3A&kind=hydrogen_bond&match=any`를 붙여 검색한다. `residue`, `kind`는 반복 지정하며 `match=all`도 지원한다. 같은 query를 `/interaction-candidates.csv`에 전달해 CSV를 받는다. 소유자와 관리자만 접근할 수 있다. Docking을 재시도하면 다시 계산할 화합물의 이전 상호작용 인덱스를 지운다. 분석이 실행·대기 중이면 원본 docking 재시도/삭제는 분석 취소와 자원 반환 후 가능하다.
-
-이 확장은 Alembic `b63d14a829f0` migration과 API·scheduler·web 이미지 업데이트가 필요하다. API가 먼저 migration을 완료한 뒤 새 scheduler를 시작한다. 기존 worker는 정상 종료 후 재시작해 체크포인트에서 이어서 실행한다. 기존 데이터나 volume을 초기화하지 않는다. 이전 이미지로 되돌릴 때는 진행 중 분석을 취소하고 `interactions` 작업이 큐에 없는지 확인해야 한다.
-
-## 관리자 자원 배분
-
-전체 계산 CPU 한도, 동시 학생 수, 기본 학생당 CPU와 학생별 CPU 재정의를 설정한다. 하나의 학생은 한 번에 한 작업을 실행하고, 그 작업의 화합물과 conformer는 순차 처리한다. 예약한 CPU 집합은 학생끼리 겹치지 않는다. 전처리도 같은 자원 한도를 사용한다.
-
-설정 변경은 신규 작업 배정에 적용된다. 실행 중인 작업의 자원은 종료 때 반환되므로 한도를 낮추면 잠시 실제 배정이 새 한도보다 클 수 있다. 즉시 중단하려면 해당 작업을 취소한다. 신규 배정 일시 중지는 이미 실행 중인 작업에는 영향을 주지 않는다.
-
-CPU를 더 배정하는 것이 항상 전체 수업의 처리량을 높이지는 않는다. `scripts/benchmark.py`는 동일한 분자를 CPU 1, 2, 4, 8개로 실행해 처리량을 비교한다. 측정 조건과 결과는 `test-results/benchmark/report.json`에 저장한다. 초기 50개 분자 측정에서 학생당 CPU 4개는 평균 5.11초였으며, 기본 동시 8명으로 80만 개를 단순 외삽하면 약 5.9일이다. 자세한 가정과 한계는 [검증 기록](validation.md)을 확인한다.
-
-## 중단과 복구
-
-`docker compose restart scheduler`는 계산 프로세스를 정리하고 완료된 화합물 다음부터 재개한다. 작업과 결과를 지우려는 목적이 아니라면 Docker volume을 삭제하지 않는다. `docker compose down -v`는 DB와 큐의 영속 데이터를 제거하므로 일반 재시작에 사용하지 않는다.
-
-계산 중 프로세스가 중단되면 마지막 미완료 화합물이 다시 실행될 수 있다. 완료한 결과는 체크포인트로 보존된다. 작업 취소는 하위 qvina 프로세스까지 종료하며, 자원 반환은 실제 프로세스 종료를 확인한 뒤 이루어진다.
-
-Redis 장애 시 새로운 작업을 다른 executor로 우회 실행하지 않는다. `/api/health`와 관리자 화면의 scheduler 오류를 확인한다. `docker compose logs --tail 100 api scheduler`로 서비스를 점검하고, 작업별 계산 로그는 `storage/<user_id>/tasks/<task_id>/worker.log`에서 확인한다.
-
-## 저장 공간과 보존 기간
-
-관리자 화면에서 전체 및 학생별 용량 한도를 설정한다. 디스크 여유가 2GiB보다 적으면 새 계산 또는 업로드를 거절한다. 결과 보존 기간의 기본값 `0`은 자동 삭제하지 않는다는 뜻이다. 양수로 설정하면 해당 기간이 지난 종료된 screening 작업을 정기적으로 삭제하고 감사 기록에 남긴다. 원본 단백질과 재사용 receptor는 보존한다. 용량은 업로드와 각 화합물·전처리 결과 저장 시 DB에 누적하며 실행 중인 파일은 해당 단계 종료 후 반영된다. 물리 디스크 여유는 매번 별도로 확인한다. 외부에서 파일을 추가하거나 이전 버전 데이터를 가져왔다면 scheduler를 멈춘 유지보수 시간에 `docker compose exec -T api python scripts/reconcile-storage.py`로 기록을 재계산한다.
-
-작업 화면의 삭제 기능은 종료된 screening의 결과를 삭제한다. 진행 중 작업은 취소하고 CPU가 반환된 후 삭제한다. 내려받은 결과를 확인한 뒤 삭제한다.
-
-## 백업과 복원
-
-`scripts/backup.sh /안전한/백업/경로`는 API와 계산 worker를 잠시 중지하고 DB, storage, 비공개 배포 설정을 백업한 뒤 다시 시작한다. 백업은 자동 실행하도록 예약하지 않는다. 저장 위치의 권한은 소유자만 접근하도록 제한한다.
-
-복원은 현재 DB를 바꾸므로 먼저 현재 백업을 만든다. 사용할 `.env`의 DB 비밀번호와 네트워크 설정을 확인한 뒤 `CONFIRM_RESTORE=yes scripts/restore.sh /백업/경로`를 실행한다. 기존 storage는 날짜가 붙은 디렉터리로 보존한다. 복원 후 관리자 로그인, 작업 목록, 점수 파일, scheduler 상태를 확인한다.
+- 백엔드 설정의 기본값은 SQLite(`storage/development.db`)와 `redis://localhost:6379/0`이다. scheduler와 runner는 Redis가 필요하다.
+- 빈 개발 DB에서의 기동 순서(앞 단계가 없으면 뒤 단계가 실패한다): `uv run alembic upgrade head`(테이블 생성; api의 `bootstrap`은 테이블을 만들지 않는다) → `ADMIN_PASSWORD=<8자 이상> uv run uvicorn dockschedule.api:app --port 8091`(최초 `admin` 생성) → `uv run python -m dockschedule.scheduler`.
+- 프런트 개발 서버(`npm --prefix frontend run dev`)는 `/api`를 `http://127.0.0.1:8091`로 프록시하므로 api를 8091 포트로 띄운다.
 
 ## 검증 명령
 
-개발 환경은 `uv sync`, `npm --prefix frontend ci`로 준비한다. 일반 검증은 `uv run pytest -q`, 화면 build는 `npm --prefix frontend run build`다. 실제 chemistry 테스트는 `tools/qvina2.1`이 필요하며 `uv run python scripts/download-qvina.py`로 준비한다.
+```bash
+OPENMM_CPU_THREADS=2 OPENBLAS_NUM_THREADS=1 uv run pytest -q   # Python 전체 (실제 PDBFixer·QuickVina 포함, SQLite)
+npm --prefix frontend run build                                # 타입 검사 + production build
+cd frontend && npx playwright test                             # 브라우저 시나리오 (API는 mock, NGL은 실제)
+```
 
-운영 주소가 loopback이 아니라면 아래 HTTP 스크립트에 `--url http://서버IP:포트`를 지정하고, 브라우저 검증에는 `DOCKSCHEDULE_URL` 환경변수를 지정한다.
+- 운영 서버 대상 스크립트(주소가 loopback이 아니면 `--url http://서버IP:포트`, 브라우저는 `DOCKSCHEDULE_URL`):
+  - `uv run python scripts/service_check.py` — 테스트 학생 2명 가입·승인, 실제 전처리·docking, CPU affinity, 다운로드 권한. 실행 동안 전체 설정을 `cpu_budget=4, max_students=2`로 일시 변경했다가 마지막에 복원하므로 실제 학생이 쓰지 않는 시간에 실행한다. 끝나면 테스트 계정을 정지하고 결과는 관리자에게 남는다.
+  - `uv run python scripts/resilience_check.py` — 실제 scheduler 재시작·취소 검증. `ready` 상태의 단백질이 미리 있어야 하며 학생 작업이 없을 때만 실행한다.
+  - `docker compose exec -T api python scripts/scale_check.py` — 별도 PostgreSQL DB로 80만 행 검증 후 삭제. docking 처리량 측정이 아니다.
+  - `scripts/benchmark.py` — 같은 분자를 CPU 1·2·4·8개로 실행해 처리량 비교(`test-results/benchmark/report.json`).
+  - `scripts/backup_check.py` — 실제 `backup.sh`를 실행(아래 백업 절의 서비스 중지 영향 동일)한 뒤 별도 DB·임시 디렉터리에 복원해 행 수·파일 해시를 비교. 임시 DB는 지우지만 `.backups/validation-*` 백업은 `.env` 사본과 함께 남으므로 직접 지운다.
 
-`uv run python scripts/service_check.py`는 테스트 학생 2명을 가입·승인시키고 실제 전처리와 docking, CPU affinity, 다운로드 권한을 검사한다. 생성한 테스트 계정은 끝나면 정지하고 결과는 관리자에게 남긴다. `uv run python scripts/resilience_check.py`는 실제 scheduler 재시작과 취소를 검증하므로 학생 작업이 없는 유지보수 시간에 실행한다.
+## 중단·복구
 
-`docker compose exec -T api python scripts/scale_check.py`는 별도 PostgreSQL DB를 만들어 80만 행을 검증한 뒤 해당 테스트 DB를 삭제한다. 실제 docking 처리량을 측정하는 검증은 아니다. 브라우저 검증은 `cd frontend && npx playwright test`로 실행하며, 필요한 Chromium 경로는 `CHROMIUM_PATH`로 지정할 수 있다.
+- `docker compose restart scheduler`는 계산 프로세스를 정리하고 완료된 화합물 다음부터 재개한다.
+- 작업 취소는 하위 계산 프로세스를 종료하고 실제 종료를 확인한 뒤에 CPU를 반환한다.
+- 상태 점검: `/api/health`(scheduler heartbeat·오류), `docker compose logs --tail 100 api scheduler`, 작업별 계산 로그는 `storage/<user_id>/tasks/<task_id>/worker.log`.
+- Redis 장애 중에는 새 작업이 시작되지 않는다. Redis를 복구하면 다음 tick부터 자동 재개한다.
+- 데이터를 보존하려면 `docker compose down -v`와 DB·Redis 볼륨 삭제를 쓰지 않는다.
 
-## 과학 계산 범위
+## 저장 공간
 
-PDB의 `SEQRES`로 확인되는 결손 잔기와 기존 잔기의 누락 원자를 복구한다. `ATOM`만 있는 PDB에서 알 수 없는 아미노산 서열을 추정하지 않는다. 복구한 구조는 실험 좌표와 구분해 표시한다. 긴 결손 구간과 결합 부위 복구 결과는 구조를 확인한 뒤 해석한다.
+- 관리자 화면에서 전체·학생별 한도를 설정한다. 디스크 여유가 2 GiB 미만이면 새 계산·업로드를 거절한다.
+- 외부에서 파일을 추가했거나 이전 데이터를 가져왔다면 scheduler를 멈추고 `docker compose exec -T api python scripts/reconcile-storage.py`로 기록을 재계산한다.
+- 보존 기간 기본값 0은 자동 삭제 없음이다.
 
-PDBFixer/OpenMM으로 단백질을 준비하고 Open Babel의 Gasteiger 전하와 rigid PDBQT 출력을 사용한다. Ligand는 RDKit ETKDGv3와 MMFF94 또는 UFF, Meeko의 Gasteiger 전하 및 PDBQT 준비 경로를 사용한다. 원래 SMILES의 입체화학과 형식전하를 유지하며 pH별 ligand protonation 및 tautomer 열거는 수행하지 않는다. Macrocycle은 QuickVina 2.1 호환을 위해 각 입력 conformer에서 ring을 rigid하게 처리한다. 지원하지 않는 화학 성분과 원자형은 오류로 표시한다.
+## 백업·복원
 
-화합물의 docking affinity와 최소화 에너지는 다른 값이다. 점수는 동일한 receptor와 설정 안에서 비교하며 실험적 친화도로 해석하지 않는다. 엔진 체크섬, 전처리 설정, conformer별 상태와 최상 pose를 결과에 기록한다.
+```bash
+scripts/backup.sh /안전한/백업/경로     # api·scheduler를 잠시 멈추고 DB 덤프 + storage + .env 사본 저장 후 재시작
+CONFIRM_RESTORE=yes scripts/restore.sh /안전한/백업/경로   # 현재 DB를 교체한다
+```
+
+- `backup.sh`가 scheduler를 멈췄다 다시 시작하면 실행 중이던 작업은 `queued`로 돌아가 마지막 화합물 하나를 다시 계산한다. 학생 작업이 없을 때 실행하는 것이 좋다.
+- 백업은 자동 예약하지 않는다. 경로를 생략하면 `.backups/<날짜>`에 저장한다. 백업 디렉터리는 700, 파일은 600 권한이다.
+- 복원 전 반드시 현재 백업을 먼저 만든다. 복원은 api·scheduler·web을 멈추고 기존 `storage`를 `storage.before-restore-<날짜>`로 옮긴 뒤 풀고 DB를 `--clean`으로 복원하고 서비스를 올린다. 복원 후 관리자 로그인, 작업 목록, 점수 파일, scheduler 상태를 확인한다.
+- 복원에 쓰는 `.env`의 DB 비밀번호와 네트워크 설정이 백업 시점과 맞는지 먼저 확인한다.
+
+## 업데이트 배포
+
+1. 코드를 갱신하고 `docker compose up --build -d`(api·scheduler·web 이미지 재빌드).
+2. api가 `alembic upgrade head`를 끝내고 healthy해진 뒤 새 scheduler가 시작된다. 기존 worker는 정상 종료 후 체크포인트부터 이어진다.
+3. 이전 이미지로 되돌릴 때는 진행 중인 상호작용 분석을 취소하고 `interactions` 작업이 큐에 없는지 확인한다.
+4. 배포 때 학생 작업이나 볼륨을 초기화하지 않는다.

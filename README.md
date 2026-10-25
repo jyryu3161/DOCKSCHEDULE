@@ -25,7 +25,8 @@ python3 scripts/install.py
 ## 문서
 
 - [설계와 구현 범위](docs/implementation-plan.md)
-- [설치·사용·백업·복원 안내](docs/operations.md)
+- [학생 사용 안내](docs/user-guide.md)
+- [설치·운영·백업·복원 안내](docs/operations.md)
 - [검증 결과와 성능 측정](docs/validation.md)
 - [계산 도구와 라이선스](THIRD_PARTY.md)
 - [참고 플랫폼 MDSCHEDULER](https://github.com/jyryu3161/MDSCHEDULER)
