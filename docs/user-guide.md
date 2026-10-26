@@ -46,3 +46,4 @@ PDB의 `SEQRES`로 확인되는 결손 잔기와 기존 잔기의 누락 원자�
 PDBFixer/OpenMM으로 단백질을 준비하고 Open Babel의 Gasteiger 전하와 rigid PDBQT 출력을 사용한다. Ligand는 RDKit ETKDGv3와 MMFF94 또는 UFF, Meeko의 Gasteiger 전하 및 PDBQT 준비 경로를 사용한다. 원래 SMILES의 입체화학과 형식전하를 유지하며 pH별 ligand protonation 및 tautomer 열거는 수행하지 않는다. Macrocycle은 QuickVina 2.1 호환을 위해 각 입력 conformer에서 ring을 rigid하게 처리한다. 지원하지 않는 화학 성분과 원자형은 오류로 표시한다.
 
 화합물의 docking affinity와 최소화 에너지는 다른 값이다. 점수는 동일한 receptor와 설정 안에서 비교하며 실험적 친화도로 해석하지 않는다. 엔진 체크섬, 전처리 설정, conformer별 상태와 최상 pose를 결과에 기록한다.
+9. docking이 끝나면 affinity가 낮은 상위 화합물(기본 1,000개)이 GNINA로 자동 재점수화된다. 결과 표에 CNNscore, CNNaffinity, CNN_VS와 합의 순위가 나타나며, 정렬을 `합의 순위`·`CNNaffinity`·`CNNscore`·`CNN_VS`로 바꾸고 `CNNaffinity 가중치`와 `최소 CNNscore`를 조절할 수 있다. 합의 순위는 QuickVina 순위와 CNNaffinity 순위의 가중 평균이며 낮을수록 좋다. 계산이 실패·취소되면 `GNINA 이어서 계산`을 누른다. 이 점수는 교육용이며 실험 친화도가 아니다.

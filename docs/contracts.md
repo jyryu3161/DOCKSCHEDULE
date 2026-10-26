@@ -29,10 +29,10 @@
 | `GET /admin/users` | — | 사용자 객체 배열(최근 가입 순) | — |
 | `PATCH /admin/users/{id}` | `status`(`approved\|rejected\|suspended\|pending`, null 불가), `cpu_override`(1~4096 또는 null) | 사용자 객체 | 404, 400 관리자 계정 상태 변경, 422 CPU가 전체 한도 초과·status null |
 | `POST /admin/users/{id}/reset-password` | — | `{temporary_password}` | 404 |
-| `PUT /admin/settings` | 설정 14개 전부(아래) | `GET /settings`와 같은 객체 | 422 CPU 한도 불일치(기본 CPU > 전체, 전체 > 서버 CPU 수, 학생 개별 설정 > 전체) |
+| `PUT /admin/settings` | 설정 15개 전부(아래, `gnina_top_n`은 생략하면 기본 1000) | `GET /settings`와 같은 객체 | 422 CPU 한도 불일치(기본 CPU > 전체, 전체 > 서버 CPU 수, 학생 개별 설정 > 전체) |
 | `GET /admin/storage` | — | `{used_bytes, free_bytes, users:[사용자+사용량]}` | — |
 
-설정 필드: `cpu_budget`, `max_students`, `default_cpus`, `max_compounds`(≤100000), `max_conformers`, `max_exhaustiveness`, `max_pending_per_user`, `compound_timeout`(10~86400초), `preparation_timeout`(60~86400초), `max_retries`(0~5), `storage_limit_gb`, `user_storage_limit_gb`, `retention_days`(0~3650), `paused`.
+설정 필드: `cpu_budget`, `max_students`, `default_cpus`, `max_compounds`(≤100000), `max_conformers`, `max_exhaustiveness`, `max_pending_per_user`, `compound_timeout`(10~86400초), `preparation_timeout`(60~86400초), `max_retries`(0~5), `storage_limit_gb`, `user_storage_limit_gb`, `retention_days`(0~3650), `gnina_top_n`(0~`max_compounds`, 기본 1000, 0=GNINA 자동 계산 안 함), `paused`.
 
 `GET /settings`(승인 필요) → `{values, available_cpu_count, heartbeat, scheduler_error, allocated_cpus, active_students, queued}`.
 
@@ -55,9 +55,9 @@
 | `POST /jobs` (201) | `{name, receptor_id, library_id, library:{delimiter, encoding, header, cid_column, smiles_column}, center[3], size[3], selected_residues[], conformers, exhaustiveness, seed, strip_salts}` | 작업 객체 | 404, 409 대기 작업 한도, 422 receptor 미준비·옵션 한도 초과·library 형식·행 수 |
 | `GET /jobs/summary` | — | `{total, running, done, counts}` | — |
 | `GET /jobs?limit(1~200)&offset&search&state(all\|running\|done)&include_total` | — | 작업 배열 (`include_total=true`면 `{rows,total,limit,offset}`) | — |
-| `GET /jobs/{id}` | — | 작업 객체 `{id, owner_id, owner_name, receptor_id, source_task_id, kind, name, status, parameters, cpu_ids, total, completed, failed, cancel_requested, error, created_at, started_at, finished_at}` | 404 |
+| `GET /jobs/{id}` | — | 작업 객체 `{id, owner_id, owner_name, receptor_id, source_task_id, kind, name, status, parameters, cpu_ids, total, completed, failed, cancel_requested, error, created_at, started_at, finished_at}`. `kind='screen'`이면 `gnina: {active(대기·실행 중 gnina 작업 id 또는 null), status, scored, failed, pending, top_n, can_resume}`가 붙는다 | 404 |
 | `POST /jobs/{id}/cancel` | — | 작업 객체 | 404 |
-| `POST /jobs/{id}/retry` | — | 작업 객체 | 404, 409 아직 종료·반환 전 / 분석 작업 직접 재시도 / 분석 진행 중 |
+| `POST /jobs/{id}/retry` | — | 작업 객체 | 404, 409 아직 종료·반환 전 / 분석·`gnina` 작업 직접 재시도 / 분석·GNINA 진행 중 |
 | `DELETE /jobs/{id}` | — | `{ok: true}` | 404, 409 종료된 screening만 / 분석 진행 중 |
 
 ## 결과·내보내기
@@ -66,10 +66,11 @@
 
 | 요청 | 입력 | 출력 | 오류 |
 | --- | --- | --- | --- |
-| `GET /jobs/{id}/results?page&page_size(1~200)&search&status&sort(affinity\|row)` + 상호작용 필터 | — | `{total, page, rows:[{id,row_number,cid,smiles,normalized_smiles,status,affinity,error,elapsed,details}]}` (`affinity` 오름차순, 점수 없음은 뒤) | 404, 422 필터 |
+| `GET /jobs/{id}/results?page&page_size(1~200)&search&status&sort(affinity\|row\|consensus\|cnn_score\|cnn_affinity\|cnn_vs)&w(0~1, 기본 0.5)&min_cnn_score(0~1)` + 상호작용 필터 | — | `{total, page, rows:[{id,row_number,cid,smiles,normalized_smiles,status,affinity,error,elapsed,details,gnina}]}` (`affinity` 오름차순, 점수 없음은 뒤). `gnina`는 기록이 없으면 `null`, 있으면 `{status, cnn_score, cnn_affinity, cnn_vs, gnina_vina, error, rank:{vina, cnn_affinity, cnn_score, cnn_vs, consensus}}`(`succeeded`가 아니면 점수·순위가 null, 지표별 순위는 소수 가능, `consensus`는 정수) | 404, 422 필터·`w`·`min_cnn_score` 범위 |
 | `GET /jobs/{id}/compounds/{compound_id}/{sdf\|pdbqt}` | — | 최상 pose 파일 | 404 (성공/부분 성공만) |
-| `GET /jobs/{id}/scores?format=csv\|tsv` | — | 입력의 모든 행(실패·미완료 포함) 스트림 | 404, 422 |
-| `GET /jobs/{id}/archive` | — | ZIP: `scores.csv`, `manifest.json`, `receptor/*`, `poses/row-N.{sdf,pdbqt}` | 404 |
+| `GET /jobs/{id}/scores?format=csv\|tsv&w` | — | 입력의 모든 행(실패·미완료 포함) 스트림. 끝에 GNINA 열 6개 추가 | 404, 422 |
+| `POST /jobs/{id}/gnina` (201) | — | 새 `gnina` 작업 객체(`parameters={top_n, auto:false}`) | 404, 403 CSRF, 409 screening 미종료·활성 gnina 작업 있음·`gnina_top_n`=0·계산할 대상 없음, 422 저장 공간 한도 |
+| `GET /jobs/{id}/archive` | — | ZIP: `scores.csv`, `manifest.json`(GNINA 기록이 있으면 `gnina:{version, binary_sha256, top_n, scored}`), `receptor/*`, `poses/row-N.{sdf,pdbqt}` | 404 |
 
 ## 상호작용 분석
 
@@ -80,6 +81,6 @@
 | `GET /jobs/{id}/compounds/{compound_id}/interactions` | — | `{engine, engine_version, schema_version, interactions:[{id, kind, type, role, residue, ligand_atoms[], protein_atoms[], ligand_position, protein_position, distance, angles}], warnings[]}` | 404 pose 없음, 409 receptor 미준비, 503(`Retry-After: 3`), 422 분석 실패 |
 | `GET /jobs/{id}/interaction-index` | — | `{eligible, analyzed, failed, remaining, job, busy, failures[≤10], residues[]}` | 404, 409 screening 아님 |
 | `POST /jobs/{id}/interaction-index` (201) | — | 분석 작업 객체(`kind='interactions'`) | 404, 409 이미 진행 중·새로 분석할 pose 없음·receptor 미준비 |
-| `GET /jobs/{id}/interaction-candidates.csv` | 상호작용 필터 + `search`, `status` | CSV 스트림(헤더 10열: `row_number, CID, SMILES, affinity_kcal_mol, matched_interactions, residue_match, selected_residues, selected_types, engine_version, exported_at_utc`) | 404, 422 필터 없음 |
+| `GET /jobs/{id}/interaction-candidates.csv` | 상호작용 필터 + `search`, `status` | CSV 스트림(헤더 10열: `row_number, CID, SMILES, affinity_kcal_mol, matched_interactions, residue_match, selected_residues, selected_types, engine_version, exported_at_utc` 뒤에 GNINA 열 6개 `gnina_status, gnina_cnn_score, gnina_cnn_affinity, gnina_cnn_vs, gnina_vina, gnina_consensus_rank`; 쿼리 `w` 추가) | 404, 422 필터 없음 |
 
 모든 CSV 응답은 UTF-8 BOM을 붙이고, 사용자 입력 텍스트가 수식 문자로 시작하면 `'` 접두를 붙인다.

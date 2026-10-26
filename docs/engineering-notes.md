@@ -30,6 +30,16 @@
 - **runner가 매 화합물마다 느리게 시작한다.** 원인: 과학 라이브러리 import가 무겁다. 대응: runner가 미리 import하고 `fork`로 화합물마다 프로세스를 만든다. `spawn`으로 바꾸면 매번 import 비용이 든다.
 - **Redis가 죽으면 새 작업이 시작되지 않는다.** 원인: 의도된 동작이다. scheduler가 새 배정을 멈추고 `scheduler_error`를 남긴다(`/api/health`와 관리자 화면에 표시). 다른 executor로 우회하는 코드를 추가하지 않는다.
 
+## GNINA
+
+- **GNINA 실행 파일이 호스트에서 `GLIBC_2.35 not found` 또는 `libcudnn.so.9`로 실행되지 않는다.** 원인: 공식 정적 바이너리는 glibc ≥ 2.35이고 CPU 모드에서도 cuDNN·CUDA 런타임을 적재한다(호스트는 glibc 2.31). 대응: 이미지(bookworm) 안에서만 실행한다. 새 계산 경로·테스트가 호스트에서 실제 GNINA를 돌린다고 가정하지 않는다(단위 테스트는 가짜 바이너리, 실제 바이너리 테스트는 실행 가능할 때만).
+- **GNINA 출력이 어느 화합물인지 구분되지 않는다.** 원인: QuickVina의 `best.sdf` 제목줄이 모두 `best`다. 대응: 묶음 입력의 제목줄을 고유하게 바꾸고 `-o` 출력 SDF의 입력 순서로 대응시킨다(`gnina.py`).
+- **`--cpu`를 늘려도 GNINA `--score_only`가 빨라지지 않는다.** 근거(`tests/fixtures/gnina_benchmark.md`, 40개 pose, 1회 측정, 비전용 서버): `--cpu` 1·2·4에서 화합물당 1.74·1.95·2.17초(화합물마다 프로세스), 한 프로세스 묶음이면 1.23·1.25·1.51초. 프로세스당 모델 적재가 약 0.5~0.7초다. 그래서 예약 CPU 수만큼 `--cpu 1` 프로세스를 병렬로 돌리고 묶음 단위로 처리한다. 점수는 결정적이다(차이 1e-6 이하). 기본 N=1000이면 CPU 1개 기준 약 20분 이상으로 추정되나 실제 40명 부하로는 검증하지 않았다.
+- **receptor PDB와 PDBQT에서 GNINA 점수가 다르다.** 근거: 10개 pose 비교에서 Affinity는 6개가 같고 4개가 최대 0.29 kcal/mol, CNNscore는 최대 0.08, CNNaffinity는 최대 0.15 달랐다. 대응: 수소를 포함한 `receptor.pdb`로 고정한다. 입력 형식을 바꾸면 점수 의미가 바뀐다.
+- **순위가 바뀐다/GNINA 집합이 N보다 크다.** 원인: 순위는 `succeeded` 기록 전체(집합)에서 조회 때 계산하고, N을 낮추거나 affinity 순위가 밀려도 기존 `succeeded` 기록은 지우지 않는다. docking 재시도가 다시 계산한 화합물의 기록만 지워진다. 순위를 DB에 저장하는 구조로 바꾸지 않는다.
+- **`gnina` 작업이 중복 등록되지 않는다/등록되지 않는다.** 원인: 같은 screening에 대기·실행 중인 `kind='gnina'` 작업이 있거나 계산할 대상이 없거나 `gnina_top_n`이 0이면 만들지 않는다. 활성 확인은 `gnina_jobs.active_gnina`(종류 한정)를 쓰고 `interaction_index.active_analysis`(모든 하위 작업)는 재시도·삭제 거절에만 쓴다. 등록 코드의 예외는 끝난 screening을 `failed`로 만들지 않고 worker 로그에만 남는다.
+- **관리자 설정 저장이 `gnina_top_n > max_compounds`로 422가 난다.** 대응: `ResourceSettings`의 검증이다. `max_compounds`를 낮출 때 `gnina_top_n`도 함께 낮춘다.
+
 ## 저장 공간 집계
 
 - **저장 용량이 실제와 어긋난다.** 원인: 용량은 업로드, 전처리, 화합물 하나가 끝날 때마다 DB에 누적하며 진행 중 파일은 해당 단계 종료 후에 반영된다. 외부에서 파일을 넣거나 옛 데이터를 가져오면 DB와 어긋난다. 대응: scheduler를 멈춘 유지보수 시간에 `docker compose exec -T api python scripts/reconcile-storage.py`로 재계산한다.

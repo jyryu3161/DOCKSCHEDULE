@@ -1,7 +1,7 @@
 # migrations — Alembic 스키마 이력
 
 ## 범위
-PostgreSQL(운영)과 SQLite(개발·테스트) 양쪽의 스키마 변경 이력. 현재 head는 `b63d14a829f0`(상호작용 인덱스). 순서: `21f4ef049b76`(초기) → `742e1d0bc899`(산출물 용량 집계) → `9b7c31e2a640`(화합물 큐 인덱스) → `b63d14a829f0`.
+PostgreSQL(운영)과 SQLite(개발·테스트) 양쪽의 스키마 변경 이력. 현재 head는 `c4e8a1d57f23`(GNINA 점수 테이블·`gnina_top_n` 설정). 순서: `21f4ef049b76`(초기) → `742e1d0bc899`(산출물 용량 집계) → `9b7c31e2a640`(화합물 큐 인덱스) → `b63d14a829f0`(상호작용 인덱스) → `c4e8a1d57f23`.
 
 ## 이 모듈의 범위가 아닌 것
 - 모델 정의(`backend/dockschedule/models.py`)와 운영 설정 기본값(`DEFAULT_SETTINGS`)은 여기서 바꾸지 않는다. 설정 값 채우기가 필요하면 데이터 migration으로 별도 작성한다.

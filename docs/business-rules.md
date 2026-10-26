@@ -1,10 +1,10 @@
 # 도메인 규칙
 
-수업용 서비스다. 학생이 단백질(PDB)과 화합물 library(CSV/TSV의 SMILES)를 제출하면 QuickVina 2.1 docking 결과를 받는다. 점수는 교육용 계산값이며 실험적 친화도가 아니다.
+수업용 서비스다. 학생이 단백질(PDB)과 화합물 library(CSV/TSV의 SMILES)를 제출하면 QuickVina 2.1 docking 결과를 받고, affinity 상위 화합물은 GNINA로 재점수화된다. 점수는 교육용 계산값이며 실험적 친화도가 아니다.
 
 ## 용어
 
-- **작업(task)**: 계산 단위. 종류는 `prepare`(단백질 전처리), `screen`(library docking), `interactions`(library 전체 상호작용 분석). 화면의 "Screening"은 `screen`이다.
+- **작업(task)**: 계산 단위. 종류는 `prepare`(단백질 전처리), `screen`(library docking), `interactions`(library 전체 상호작용 분석), `gnina`(상위 pose의 GNINA 재점수화). 화면의 "Screening"은 `screen`이다.
 - **receptor**: 전처리를 마친(또는 마치는 중인) 단백질. 한 번 만들면 여러 screening에서 재사용한다.
 - **화합물 행**: library의 한 행. 같은 CID가 여러 행에 나와도 별개의 행이다.
 - **affinity**: QuickVina가 낸 점수(kcal/mol, 낮을수록 좋음). conformer 최소화 에너지와 별개의 값이다.
@@ -65,13 +65,14 @@
 
 ## 자원 배분
 
-- 한 학생은 동시에 작업 하나만 실행한다(`prepare`·`screen`·`interactions` 합산). 같은 학생의 다른 작업은 `queued`로 기다린다.
-- 실행 중 작업의 CPU 집합은 서로 겹치지 않는다. 작업이 배정받는 CPU 수는 `screen`/`prepare`는 학생 `cpu_override` 또는 `default_cpus`, `interactions`는 항상 1이다.
+- 한 학생은 동시에 작업 하나만 실행한다(`prepare`·`screen`·`interactions`·`gnina` 합산). 같은 학생의 다른 작업은 `queued`로 기다린다.
+- 실행 중 작업의 CPU 집합은 서로 겹치지 않는다. 작업이 배정받는 CPU 수는 `screen`/`prepare`는 학생 `cpu_override` 또는 `default_cpus`, `interactions`는 항상 1이다(`gnina`는 `screen`과 같다).
 - 동시에 실행 중인 학생 수는 `max_students`, 배정된 CPU 합계는 `cpu_budget`을 넘지 않는다. 서버가 쓸 수 있는 CPU 수가 `cpu_budget`보다 작아도 서버 쪽이 한도다.
 - 선택 순서: 대기 작업을 제출 시각 순으로 훑되, 이미 실행 중인 학생의 작업·승인되지 않은 학생의 작업·취소 요청된 작업은 건너뛴다. 필요한 CPU 수가 남은 한도나 비어 있는 CPU보다 크면 그 작업만 건너뛰고 뒤의 더 작은 작업이 먼저 실행될 수 있다(엄격한 FIFO가 아니다). 동시 학생 수 한도에 도달하면 더 보지 않는다.
 - `paused`가 켜지면 새 배정을 하지 않는다. 이미 실행 중인 작업은 영향을 받지 않는다.
 - 한도를 낮춰도 실행 중 작업의 예약은 종료 때까지 유지된다. 즉시 줄이려면 해당 작업을 취소해야 한다.
-- 학생당 대기+실행 작업 수는 `max_pending_per_user`(기본 3) 미만이어야 새 작업(전처리·제출·재시도·분석 요청)을 만들 수 있다.
+- 학생당 대기+실행 작업 수는 `max_pending_per_user`(기본 3) 미만이어야 새 작업(전처리·제출·재시도·분석 요청)을 만들 수 있다. `gnina` 작업은 이 개수에 세지 않는다.
+- 같은 학생의 대기 `gnina` 작업은 그 학생의 다른 대기 작업보다 먼저 선택된다(`choose_tasks`가 학생의 가장 앞선 대기 작업 위치로 옮긴다). 학생 간 순서는 바뀌지 않는다.
 
 ## 저장 공간
 
@@ -99,3 +100,16 @@
 
 - 점수 CSV/TSV는 실패·미완료 행을 포함해 입력의 모든 행을 낸다(점수는 빈 값). ZIP은 receptor, 성공 pose(SDF·PDBQT), 점수표, 실행 설정(manifest)을 담는다. UTF-8 BOM을 붙인다.
 - 학생이 입력한 문자열이 `=`, `+`, `-`, `@`, 탭, 캐리지 리턴으로 시작하면 앞에 `'`를 붙여 스프레드시트 수식으로 실행되지 않게 한다. 모든 CSV 내보내기에 적용한다.
+
+## GNINA 재점수화와 후보 순위
+
+- QuickVina pose는 바꾸지 않고 GNINA `--score_only`로 CNN 점수만 매긴다(CPU 전용, GNINA 기본 CNN). 입력은 전처리된 `receptor.pdb`와 화합물 `best.sdf`(수소가 없으면 좌표를 보존해 임시 입력에만 수소를 추가, protonation 열거 없음).
+- 자동 등록: `screen`이 `completed`/`partial`이 되면(재시도 후 다시 끝나는 경우 포함) `gnina` 작업이 만들어진다. `cancelled`/`failed`에는 만들지 않는다. 관리자 설정 `gnina_top_n`(0~`max_compounds`, 기본 1000, 0이면 끔)은 작업 생성 시 `parameters.top_n`으로 복사된다. 계산할 화합물이 없거나 같은 screening에 대기·실행 중인 `gnina` 작업이 있으면 만들지 않는다.
+- 대상: 성공/부분 성공이고 affinity가 있는 화합물을 affinity 오름차순, 동률은 `row_number` 순으로 정렬한 상위 정확히 N개. 이미 `succeeded`인 GNINA 기록은 다시 계산하지 않고, N 밖으로 밀린 기존 `succeeded` 기록도 지우지 않는다.
+- 기록(`gnina_scores`): `status`는 `pending`→`succeeded`|`failed`, 점수는 `cnn_score`, `cnn_affinity`, `cnn_vs`(= `cnn_score × cnn_affinity`, 우리가 계산), `gnina_vina`(GNINA의 Vina 계열 점수, QuickVina `affinity`와 별개). 실패 화합물은 점수를 채우지 않고 순위에서 제외된다. 화합물을 묶음(기본 25개)으로 계산하고 묶음이 실패하면 하나씩 다시 실행해 실패를 격리한다.
+- 종료 상태: 전부 성공 `completed`, 일부 실패 `partial`, 성공 없음 `failed`, 취소 `cancelled`(완료된 기록은 보존). 이어서 계산에서는 이미 성공한 기록도 성공 수에 포함되므로 새 대상이 모두 실패해도 `partial`이 된다. 학생은 `gnina` 작업만 취소할 수 있고 docking 결과는 보존된다. 중단·재시작 후에는 `pending` 기록만 이어서 계산한다.
+- 이어서 계산(`POST /jobs/{id}/gnina`): 선정 규칙을 다시 적용해 계산 대상이 있으면 새 작업을 만든다(`gnina_top_n=0`·대상 없음·활성 작업 있음·screening 미종료는 409). `gnina` 작업의 `retry`는 409다.
+- docking 재시도가 다시 계산하는 화합물의 GNINA 기록만 지운다. 재시도가 끝나면 자동 등록으로 새로 선정된 화합물만 계산한다. GNINA 작업이 대기·실행 중이면 그 screening의 docking 재시도·삭제는 409다.
+- 순위는 보는 시점에 계산하며 저장하지 않는다. GNINA 집합 = `succeeded` 기록(점수·QuickVina affinity가 모두 있음). 지표별 순위는 QuickVina affinity 오름차순, `cnn_affinity`·`cnn_score`·`cnn_vs` 내림차순이며 동률은 평균 순위를 공유한다. 합의 순위 = `w × (cnn_affinity 순위) + (1−w) × (QuickVina 순위)`(`w` 0~1, 기본 0.5, 낮을수록 좋음)를 정렬한 정수 서수이고 동률은 `row_number` 순이다. 순위 값은 항상 GNINA 집합 전체 기준이며 검색·상태·`min_cnn_score`·상호작용 필터는 보이는 행만 바꾼다. 집합 밖 화합물은 GNINA 정렬에서 뒤에 온다.
+- 내보내기: 점수 CSV/TSV·후보 CSV에 `gnina_status`, `gnina_cnn_score`, `gnina_cnn_affinity`, `gnina_cnn_vs`, `gnina_vina`, `gnina_consensus_rank`(`w` 기본 0.5)가 추가되고 ZIP manifest에 GNINA 버전·SHA256·`top_n`이 들어간다.
+- 합의 순위의 가중치는 타깃마다 최적값이 달라 고정하지 않았고 검증 데이터도 없다. 점수는 교육용이며 실험 친화도가 아니다.

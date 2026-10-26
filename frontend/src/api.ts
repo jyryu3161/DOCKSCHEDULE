@@ -76,6 +76,15 @@ export interface Job {
   cancel_requested: boolean;
   created_at: string;
   parameters: any;
+  gnina?: {
+    active: string | null;
+    status: string | null;
+    scored: number;
+    failed: number;
+    pending: number;
+    top_n: number | null;
+    can_resume: boolean;
+  };
 }
 export const labels: Record<string, string> = {
   pending: "대기",

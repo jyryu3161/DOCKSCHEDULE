@@ -1,7 +1,7 @@
 # frontend — 학생·관리자 화면
 
 ## 범위
-React 18 + TypeScript SPA(Vite). 로그인/가입, 대시보드(작업 목록), 새 Screening(PDB 업로드·전처리·결합 위치 선택·library 매핑·제출), 작업 상세(진행·결과 표·3D pose·상호작용), 관리자 화면(사용자·자원 설정·저장 공간). 3D 구조는 NGL 2.4.0.
+React 18 + TypeScript SPA(Vite). 로그인/가입, 대시보드(작업 목록), 새 Screening(PDB 업로드·전처리·결합 위치 선택·library 매핑·제출), 작업 상세(진행·결과 표·GNINA 재점수화 열·합의 순위 정렬·3D pose·상호작용), 관리자 화면(사용자·자원 설정·저장 공간). 3D 구조는 NGL 2.4.0.
 
 | 파일 | 맡는 일 |
 | --- | --- |
@@ -33,5 +33,5 @@ React 18 + TypeScript SPA(Vite). 로그인/가입, 대시보드(작업 목록), 
 
 ## 테스트 지침
 - `npm --prefix frontend run build`(타입 검사 포함)가 통과해야 한다.
-- 브라우저 시나리오는 느린 응답, 작업 전환, 뷰어 지연 로딩, pose 요청 실패 후 복구, 모바일 폭 overflow, 상호작용 표·필터·CSV, 후보 검색을 다룬다. `DOCKSCHEDULE_URL`로 대상 서버를 지정하고 `CHROMIUM_PATH`로 브라우저를 지정할 수 있다.
+- 브라우저 시나리오는 느린 응답, 작업 전환, 뷰어 지연 로딩, pose 요청 실패 후 복구, 모바일 폭 overflow, 상호작용 표·필터·CSV, 후보 검색, GNINA 열·정렬·가중치·이어서 계산(`gnina.spec.ts`)을 다룬다. `workspace`·`import-pagination` 시나리오는 실제 로그인이 필요해 실서비스(`DOCKSCHEDULE_URL`)가 없으면 실패한다. `DOCKSCHEDULE_URL`로 대상 서버를 지정하고 `CHROMIUM_PATH`로 브라우저를 지정할 수 있다.
 - 브라우저 테스트는 API를 mock하므로 서버 계약 변경은 pytest에서도 확인한다.

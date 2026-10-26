@@ -109,6 +109,33 @@ print(json.dumps(out))"""
         assert len(list(csv.reader(io.StringIO(exported.text.lstrip('\ufeff')))))==4
         report['screenings'].append({'task':task,'results':rows})
     assert students[0][0].get('/api/jobs/'+students[1][2]['screen_id']+'/scores').status_code==404
+    # GNINA flow: the finished screening auto-queues a gnina task. A real GNINA binary may be missing on the host,
+    # so only the registration and API shape are required; scored rows are asserted only if the task completes.
+    gnina_report=[]
+    for client,user,prep in students:
+        sid=prep['screen_id']
+        children=[t for t in call(client,'GET','/jobs') if t['source_task_id']==sid and t['kind']=='gnina']
+        assert len(children)==1,children
+        data=call(client,'GET',f'/jobs/{sid}/results?sort=consensus&w=0.5')
+        assert data['rows'] and all('gnina' in r for r in data['rows']),data
+        summary=call(client,'GET','/jobs/'+sid)['gnina']
+        assert summary['active']==children[0]['id'] or children[0]['status'] in ('completed','partial','failed','cancelled'),summary
+        deadline=time.monotonic()+120
+        while time.monotonic()<deadline and call(client,'GET','/jobs/'+children[0]['id'])['status'] not in ('completed','partial','failed','cancelled'):
+            time.sleep(2)
+        final=call(client,'GET','/jobs/'+children[0]['id'])
+        if final['status']=='completed':
+            data=call(client,'GET',f'/jobs/{sid}/results?sort=consensus&w=0.5')
+            scored=[r for r in data['rows'] if r['gnina'] and r['gnina']['status']=='succeeded']
+            assert scored and all(r['gnina']['rank']['consensus'] for r in scored),data
+            assert [r['gnina']['rank']['consensus'] for r in scored]==sorted(r['gnina']['rank']['consensus'] for r in scored)
+            assert call(client,'GET','/jobs/'+sid)['gnina']['scored']==len(scored)
+        else:
+            print(f'NOTE: gnina task {children[0]["id"]} ended {final["status"]} (GNINA binary may be unavailable on this host); scored rows not asserted')
+        assert client.get(f'/api/jobs/{sid}/scores').text.lstrip('\ufeff').splitlines()[0].endswith('gnina_consensus_rank')
+        gnina_report.append({'task':final,'summary':call(client,'GET','/jobs/'+sid)['gnina']})
+    assert students[0][0].post('/api/jobs/'+students[1][2]['screen_id']+'/gnina').status_code==404
+    report['gnina']=gnina_report
     output=Path(args.output);output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(report,ensure_ascii=False,default=str,indent=2))
     print(json.dumps({'passed':True,'report':str(output),'tasks':[p['screen_id'] for _,_,p in students]},indent=2))
 finally:

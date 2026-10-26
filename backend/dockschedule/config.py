@@ -9,6 +9,7 @@ class Config(BaseSettings):
     redis_url: str = 'redis://localhost:6379/0'
     storage_root: Path = Path('storage')
     qvina_binary: Path = Path('tools/qvina2.1')
+    gnina_binary: Path = Path('tools/gnina')
     admin_password: str = ''
     cookie_secure: bool = False
     session_hours: int = 12
@@ -27,4 +28,4 @@ DEFAULT_SETTINGS = dict(cpu_budget=56, max_students=8, default_cpus=4,
                         max_compounds=100000, max_conformers=10, max_exhaustiveness=64,
                         max_pending_per_user=3, compound_timeout=600, preparation_timeout=1800,
                         max_retries=1, storage_limit_gb=200, user_storage_limit_gb=10,
-                        retention_days=0, paused=False)
+                        retention_days=0, gnina_top_n=1000, paused=False)
