@@ -18,12 +18,13 @@ from sqlalchemy.exc import IntegrityError
 
 from .config import config
 from .db import Session, get_db
-from .models import ACTIVE, FINISHED, Audit, Compound, CompoundAnalysis, LoginSession, Receptor, Settings, Task, Upload, User, now, uid
+from .models import ACTIVE, FINISHED, Audit, Compound, CompoundAnalysis, GninaScore, LoginSession, Receptor, Settings, Task, Upload, User, now, uid
 from .schemas import Docking, LibraryOptions, Login, PasswordChange, Prepare, Register, ResourceSettings, UserUpdate
 from .security import admin, approved, bootstrap, create_session, current_user, digest, owned, password_hash, verify
 from . import library, storage
 from .structure import inspect_pdb
-from . import interaction_index as ix
+from . import gnina_jobs, interaction_index as ix
+from .gnina_rank import consensus_order, extra_ranks
 
 
 @asynccontextmanager
@@ -75,13 +76,14 @@ def audit(db, u, action, target='', detail=None):
     db.add(Audit(actor_id=u.id, action=action, target=str(target), detail=detail or {}))
 
 
-def require_capacity(db, u):
+def require_capacity(db, u, pending=True):
     # Serialize quota checks for concurrent submissions by the same student.
     # PostgreSQL NO KEY UPDATE serializes submissions without blocking audit FKs.
     db.execute(select(User.id).where(User.id == u.id).with_for_update(key_share=True))
     s = settings(db)
-    n = db.scalar(select(func.count()).select_from(Task).where(Task.owner_id == u.id, Task.status.in_(['queued', *ACTIVE])))
-    if n >= s['max_pending_per_user']:
+    # GNINA tasks are follow-ups of a finished screening: they never count against the student's submission limit.
+    n = db.scalar(select(func.count()).select_from(Task).where(Task.owner_id == u.id, Task.kind != 'gnina', Task.status.in_(['queued', *ACTIVE])))
+    if pending and n >= s['max_pending_per_user']:
         raise HTTPException(409, '학생별 대기 및 실행 작업 수 한도에 도달했습니다.')
     storage.check_capacity(s, u.id, db=db)
 
@@ -206,7 +208,7 @@ def reset_password(user_id: int, u=Depends(admin), db=Depends(get_db)):
 def get_settings(u=Depends(approved), db=Depends(get_db)):
     s = db.get(Settings, 1)
     active = list(db.scalars(select(Task).where(Task.status.in_(ACTIVE))))
-    return dict(values=s.values, available_cpu_count=len(s.available_cpus), heartbeat=s.heartbeat,
+    return dict(values={'gnina_top_n': 1000, **s.values}, available_cpu_count=len(s.available_cpus), heartbeat=s.heartbeat,
                 scheduler_error=s.scheduler_error, allocated_cpus=sum(len(t.cpu_ids) for t in active),
                 active_students=len(active), queued=db.scalar(select(func.count()).select_from(Task).where(Task.status == 'queued')))
 
@@ -387,7 +389,11 @@ def jobs(limit: int = Query(default=100, ge=1, le=200), offset: int = Query(defa
 
 @app.get('/api/jobs/{task_id}')
 def job(task_id: str, u=Depends(approved), db=Depends(get_db)):
-    return task_json(owned(db.get(Task, task_id), u), db)
+    t = owned(db.get(Task, task_id), u)
+    data = task_json(t, db)
+    if t.kind == 'screen':
+        data['gnina'] = gnina_summary(db, t)
+    return data
 
 
 @app.post('/api/jobs/{task_id}/cancel')
@@ -402,7 +408,8 @@ def cancel(task_id: str, u=Depends(approved), db=Depends(get_db)):
 
 @app.post('/api/jobs/{task_id}/retry')
 def retry(task_id: str, u=Depends(approved), db=Depends(get_db)):
-    owned(db.get(Task, task_id), u)
+    if owned(db.get(Task, task_id), u).kind == 'gnina':
+        raise HTTPException(409, 'GNINA 작업은 재시도하지 않습니다. 원본 screening에서 "GNINA 이어서 계산"을 사용하세요.')
     # Match account suspension's lock order: user first, then task.
     require_capacity(db, u)
     t = owned(db.get(Task, task_id, with_for_update=True, populate_existing=True), u)
@@ -415,8 +422,11 @@ def retry(task_id: str, u=Depends(approved), db=Depends(get_db)):
     t.status, t.cancel_requested, t.error, t.finished_at = 'queued', False, None, None
     t.run_id = None
     if t.kind == 'screen':
-        ix.invalidate(db, select(Compound.id).where(Compound.task_id == t.id,
-            Compound.status.in_(['failed', 'running', 'partial']), Compound.cid != '', Compound.smiles != ''))
+        retried = select(Compound.id).where(Compound.task_id == t.id,
+            Compound.status.in_(['failed', 'running', 'partial']), Compound.cid != '', Compound.smiles != '')
+        ix.invalidate(db, retried)
+        # Their old poses are replaced, so GNINA scores of exactly these compounds are stale.
+        db.execute(delete(GninaScore).where(GninaScore.compound_id.in_(retried)))
         db.execute(update(Compound).where(Compound.task_id == t.id, Compound.status.in_(['failed', 'running', 'partial']),
                                           Compound.cid != '', Compound.smiles != '').values(
             status='pending', attempts=0, error=None, affinity=None, normalized_smiles=None, details={}, elapsed=None))
@@ -460,7 +470,7 @@ def index_status(task_id: str, u=Depends(approved), db=Depends(get_db)):
     total = db.scalar(select(func.count()).select_from(ids.subquery()))
     counts = dict(db.execute(select(CompoundAnalysis.status, func.count()).where(
         CompoundAnalysis.compound_id.in_(ids)).group_by(CompoundAnalysis.status)).all())
-    latest = db.scalar(select(Task).where(Task.source_task_id == t.id).order_by(Task.created_at.desc(), Task.id.desc()).limit(1))
+    latest = db.scalar(select(Task).where(Task.source_task_id == t.id, Task.kind == 'interactions').order_by(Task.created_at.desc(), Task.id.desc()).limit(1))
     failures = db.execute(select(Compound.id, Compound.cid, CompoundAnalysis.error).join(
         CompoundAnalysis, CompoundAnalysis.compound_id == Compound.id).where(Compound.task_id == t.id,
         CompoundAnalysis.status == 'failed').order_by(Compound.id).limit(10)).all()
@@ -498,17 +508,118 @@ def build_index(task_id: str, u=Depends(approved), db=Depends(get_db)):
     return task_json(batch)
 
 
+GNINA_SORTS = ('consensus', 'cnn_score', 'cnn_affinity', 'cnn_vs')
+
+
+def gnina_weight(w: float = 0.5):
+    if not 0 <= w <= 1:
+        raise HTTPException(422, '가중치 w는 0 이상 1 이하여야 합니다.')
+    return w
+
+
+def gnina_min_score(min_cnn_score: float | None = None):
+    if min_cnn_score is not None and not 0 <= min_cnn_score <= 1:
+        raise HTTPException(422, 'min_cnn_score는 0 이상 1 이하여야 합니다.')
+    return min_cnn_score
+
+
+def gnina_set(*columns, task_id):
+    """The GNINA set of a screening: compounds with a succeeded GnninaScore (and every value needed to rank them)."""
+    return select(*columns).select_from(Compound).join(GninaScore, GninaScore.compound_id == Compound.id).where(
+        GninaScore.task_id == task_id, Compound.task_id == task_id, GninaScore.status == 'succeeded',
+        Compound.affinity.is_not(None), GninaScore.cnn_score.is_not(None), GninaScore.cnn_affinity.is_not(None),
+        GninaScore.cnn_vs.is_not(None))
+
+
+def gnina_ranks(db, task_id, w, sort='consensus'):
+    """(ranks by compound id, ids in `sort` order) over the whole GNINA set; loads only compact columns."""
+    rows = [dict(r._mapping) for r in db.execute(gnina_set(Compound.id, Compound.row_number, Compound.affinity.label('vina'),
+        GninaScore.cnn_score, GninaScore.cnn_affinity, GninaScore.cnn_vs, task_id=task_id).order_by(Compound.id))]
+    ordered = consensus_order(rows, w)
+    ranks = {o['id']: dict(o['rank']) for o in ordered}
+    for i, extra in extra_ranks(rows).items():
+        ranks[i].update(extra)
+    if sort == 'consensus':
+        return ranks, [o['id'] for o in ordered]
+    rows.sort(key=lambda r: (ranks[r['id']][sort], r['row_number']))
+    return ranks, [r['id'] for r in rows]
+
+
+def gnina_json(record, ranks):
+    if record is None:
+        return None
+    rank = ranks.get(record.compound_id) if record.status == 'succeeded' else None
+    return dict(status=record.status, cnn_score=record.cnn_score, cnn_affinity=record.cnn_affinity, cnn_vs=record.cnn_vs,
+                gnina_vina=record.gnina_vina, error=record.error,
+                rank={k: (rank or {}).get(k) for k in ('vina', 'cnn_affinity', 'cnn_score', 'cnn_vs', 'consensus')})
+
+
+def gnina_summary(db, t):
+    active = gnina_jobs.active_gnina(db, t.id)
+    counts = dict(db.execute(select(GninaScore.status, func.count()).where(GninaScore.task_id == t.id).group_by(GninaScore.status)).all())
+    latest = db.scalar(select(Task).where(Task.source_task_id == t.id, Task.kind == 'gnina').order_by(Task.created_at.desc(), Task.id.desc()).limit(1))
+    top_n = settings(db).get('gnina_top_n', 1000)
+    can_resume = bool(t.status in ('completed', 'partial') and not active and top_n and gnina_jobs.select_targets(db, t.id, top_n))
+    return dict(active=active.id if active else None, status=active.status if active else None,
+                scored=db.scalar(gnina_set(func.count(), task_id=t.id)), failed=counts.get('failed', 0), pending=counts.get('pending', 0),
+                top_n=latest.parameters.get('top_n') if latest else None, can_resume=can_resume)
+
+
+@app.post('/api/jobs/{task_id}/gnina', status_code=201)
+def resume_gnina(task_id: str, u=Depends(approved), db=Depends(get_db)):
+    t = owned(db.get(Task, task_id), u)
+    # No pending-count check: GNINA tasks are follow-ups and excluded from that limit. Lock order: user, then task.
+    require_capacity(db, db.get(User, t.owner_id), pending=False)
+    t = owned(db.get(Task, task_id, with_for_update=True, populate_existing=True), u)
+    if t.kind != 'screen' or t.status not in ('completed', 'partial'):
+        raise HTTPException(409, '종료된 screening 결과에서만 GNINA를 계산할 수 있습니다.')
+    if gnina_jobs.active_gnina(db, t.id):
+        raise HTTPException(409, '이미 진행 중인 GNINA 작업이 있습니다. 완료 또는 취소 후 다시 요청하세요.')
+    top_n = settings(db).get('gnina_top_n', 1000)
+    if not top_n:
+        raise HTTPException(409, 'GNINA 재채점 개수가 0으로 설정되어 있습니다.')
+    task = gnina_jobs.create_gnina_task(db, t, top_n, auto=False)
+    if task is None:
+        raise HTTPException(409, '새로 계산할 GNINA 대상이 없습니다.')
+    audit(db, u, 'gnina', t.id, {'job_id': task.id, 'top_n': top_n, 'total': task.total})
+    db.commit()
+    return task_json(task)
+
+
 @app.get('/api/jobs/{task_id}/results')
 def results(task_id: str, page: int = Query(default=1, ge=1), page_size: int = Query(default=50, ge=1, le=200),
-            search: str = '', status: str = '', sort: str = 'affinity', filters=Depends(interaction_filters),
+            search: str = '', status: str = '', sort: str = 'affinity', w: float = Depends(gnina_weight),
+            min_cnn_score: float | None = Depends(gnina_min_score), filters=Depends(interaction_filters),
             u=Depends(approved), db=Depends(get_db)):
     t = owned(db.get(Task, task_id), u)
     validate_residues(db, t, filters)
     q = ix.candidate_query(task_id, filters) if filters['enabled'] else select(Compound).where(Compound.task_id == task_id)
     q = ix.text_filters(q, search, status)
+    if min_cnn_score is not None:
+        # Only GNINA-set compounds remain; rank values below still use the whole set.
+        q = q.where(Compound.id.in_(gnina_set(Compound.id, task_id=task_id).where(GninaScore.cnn_score >= min_cnn_score)))
     count = db.scalar(select(func.count()).select_from(q.subquery()))
-    q = q.order_by(Compound.affinity.asc().nulls_last(), Compound.row_number) if sort == 'affinity' else q.order_by(Compound.row_number)
-    rows = [compound_json(c) for c in db.scalars(q.offset((page-1)*page_size).limit(page_size))]
+    offset, ranks = (page-1)*page_size, None
+    if sort in GNINA_SORTS:
+        ranks, order = gnina_ranks(db, task_id, w, sort)
+        shown = set(db.scalars(q.with_only_columns(Compound.id).where(Compound.id.in_(gnina_set(Compound.id, task_id=task_id)))))
+        members = [i for i in order if i in shown]
+        ids = members[offset:offset+page_size]
+        by_id = {c.id: c for c in db.scalars(select(Compound).where(Compound.id.in_(ids)))}
+        found = [by_id[i] for i in ids]
+        if len(ids) < page_size:
+            rest = q.where(~Compound.id.in_(gnina_set(Compound.id, task_id=task_id))).order_by(
+                Compound.affinity.asc().nulls_last(), Compound.row_number)
+            found += db.scalars(rest.offset(max(0, offset-len(members))).limit(page_size-len(ids)))
+    else:
+        q = q.order_by(Compound.affinity.asc().nulls_last(), Compound.row_number) if sort == 'affinity' else q.order_by(Compound.row_number)
+        found = list(db.scalars(q.offset(offset).limit(page_size)))
+    rows = [compound_json(c) for c in found]
+    records = {g.compound_id: g for g in db.scalars(select(GninaScore).where(GninaScore.compound_id.in_([c['id'] for c in rows])))}
+    if ranks is None and any(g.status == 'succeeded' for g in records.values()):
+        ranks = gnina_ranks(db, task_id, w)[0]
+    for c in rows:
+        c['gnina'] = gnina_json(records.get(c['id']), ranks or {})
     if filters['enabled']:
         hits = ix.matching_hits(db, task_id, [c['id'] for c in rows], filters)
         for c in rows:
@@ -516,13 +627,30 @@ def results(task_id: str, page: int = Query(default=1, ge=1), page_size: int = Q
     return dict(total=count, page=page, rows=rows)
 
 
-def candidate_csv(task_id, filters, search, status):
+GNINA_COLUMNS = ['gnina_status', 'gnina_cnn_score', 'gnina_cnn_affinity', 'gnina_cnn_vs', 'gnina_vina', 'gnina_consensus_rank']
+
+
+def gnina_cells(db, ids, consensus):
+    """Export cells per compound id; empty for compounds without a record (rank only inside the GNINA set)."""
+    records = {r.compound_id: r for r in db.execute(select(GninaScore.compound_id, GninaScore.status, GninaScore.cnn_score,
+        GninaScore.cnn_affinity, GninaScore.cnn_vs, GninaScore.gnina_vina).where(GninaScore.compound_id.in_(ids)))}
+    return {i: [records[i].status, records[i].cnn_score, records[i].cnn_affinity, records[i].cnn_vs, records[i].gnina_vina,
+                consensus.get(i, '')] if i in records else [''] * len(GNINA_COLUMNS) for i in ids}
+
+
+def consensus_ranks(task_id, w):
+    with Session() as db:
+        return {i: r['consensus'] for i, r in gnina_ranks(db, task_id, w)[0].items()}
+
+
+def candidate_csv(task_id, filters, search, status, w=0.5):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     exported_at = now().isoformat()+'Z'
     writer.writerow(['row_number', 'CID', 'SMILES', 'affinity_kcal_mol', 'matched_interactions', 'residue_match',
-                     'selected_residues', 'selected_types', 'engine_version', 'exported_at_utc'])
+                     'selected_residues', 'selected_types', 'engine_version', 'exported_at_utc', *GNINA_COLUMNS])
     yield '\ufeff'+buffer.getvalue()
+    consensus = consensus_ranks(task_id, w)
     last = 0
     while True:
         with Session() as db:
@@ -533,25 +661,26 @@ def candidate_csv(task_id, filters, search, status):
             hits = ix.matching_hits(db, task_id, [c.id for c in rows], filters)
             versions = dict(db.execute(select(CompoundAnalysis.compound_id, Task.parameters).join(
                 Task, Task.id == CompoundAnalysis.job_id).where(CompoundAnalysis.compound_id.in_([c.id for c in rows]))).all())
+            gnina = gnina_cells(db, [c.id for c in rows], consensus)
         buffer.seek(0)
         buffer.truncate(0)
         safe = lambda s: "'"+s if isinstance(s, str) and s.startswith(('=', '+', '-', '@', '\t', '\r')) else s
         for c in rows:
             summary = '; '.join(f"{h['residue']['chain'] or '(blank)'}:{h['residue']['name']} {h['residue']['number']}{h['residue']['insertion']} | {h['kind']} | {h['count']} contacts | min {h['distance']:.3f} A" for h in hits[c.id])
             writer.writerow([c.row_number, safe(c.cid), safe(c.smiles), c.affinity, safe(summary), filters['match'],
-                safe('; '.join(filters['residues'])), '; '.join(filters['kinds']), versions[c.id].get('engine_version', ''), exported_at])
+                safe('; '.join(filters['residues'])), '; '.join(filters['kinds']), versions[c.id].get('engine_version', ''), exported_at, *gnina[c.id]])
         yield buffer.getvalue()
         last = rows[-1].id
 
 
 @app.get('/api/jobs/{task_id}/interaction-candidates.csv')
 def export_candidates(task_id: str, search: str = '', status: str = '', filters=Depends(interaction_filters),
-                      u=Depends(approved), db=Depends(get_db)):
+                      w: float = Depends(gnina_weight), u=Depends(approved), db=Depends(get_db)):
     t = owned(db.get(Task, task_id), u)
     if not filters['enabled']:
         raise HTTPException(422, '상호작용 필터를 적용하세요.')
     validate_residues(db, t, filters)
-    return StreamingResponse(candidate_csv(task_id, filters, search, status), media_type='text/csv; charset=utf-8',
+    return StreamingResponse(candidate_csv(task_id, filters, search, status, w), media_type='text/csv; charset=utf-8',
         headers={'Content-Disposition': f'attachment; filename="candidates-{task_id}.csv"'})
 
 
@@ -587,16 +716,18 @@ def pose(task_id: str, compound_id: int, format: str, u=Depends(approved), db=De
     return FileResponse(storage.compound_dir(t.owner_id, t.id, c.id)/('best.'+format), filename=f'row-{c.row_number}.{format}')
 
 
-def score_rows(task_id, separator=','):
+def score_rows(task_id, separator=',', w=0.5):
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=separator)
     exported_at = now().isoformat()+'Z'
-    writer.writerow(['row_number', 'CID', 'SMILES', 'normalized_SMILES', 'status', 'affinity_kcal_mol', 'error', 'elapsed_seconds', 'exported_at_utc'])
+    writer.writerow(['row_number', 'CID', 'SMILES', 'normalized_SMILES', 'status', 'affinity_kcal_mol', 'error', 'elapsed_seconds', 'exported_at_utc', *GNINA_COLUMNS])
     yield '\ufeff'+buffer.getvalue()
+    consensus = consensus_ranks(task_id, w)
     last = 0
     while True:
         with Session() as db:
             rows = list(db.scalars(select(Compound).where(Compound.task_id == task_id, Compound.id > last).order_by(Compound.id).limit(1000)))
+            gnina = gnina_cells(db, [c.id for c in rows], consensus)
         if not rows:
             break
         buffer.seek(0)
@@ -604,17 +735,17 @@ def score_rows(task_id, separator=','):
         for c in rows:
             # Prevent spreadsheet formula execution in student-supplied text.
             safe = lambda s: "'"+s if isinstance(s, str) and s.startswith(('=', '+', '-', '@', '\t', '\r')) else s
-            writer.writerow([c.row_number, safe(c.cid), safe(c.smiles), safe(c.normalized_smiles), c.status, c.affinity, safe(c.error), c.elapsed, exported_at])
+            writer.writerow([c.row_number, safe(c.cid), safe(c.smiles), safe(c.normalized_smiles), c.status, c.affinity, safe(c.error), c.elapsed, exported_at, *gnina[c.id]])
         yield buffer.getvalue()
         last = rows[-1].id
 
 
 @app.get('/api/jobs/{task_id}/scores')
-def scores(task_id: str, format: str = 'csv', u=Depends(approved), db=Depends(get_db)):
+def scores(task_id: str, format: str = 'csv', w: float = Depends(gnina_weight), u=Depends(approved), db=Depends(get_db)):
     owned(db.get(Task, task_id), u)
     if format not in ('csv', 'tsv'):
         raise ValueError('CSV 또는 TSV를 선택하세요.')
-    return StreamingResponse(score_rows(task_id, '\t' if format == 'tsv' else ','), media_type='text/csv; charset=utf-8',
+    return StreamingResponse(score_rows(task_id, '\t' if format == 'tsv' else ',', w), media_type='text/csv; charset=utf-8',
                              headers={'Content-Disposition': f'attachment; filename="scores-{task_id}.{format}"'})
 
 
@@ -625,7 +756,13 @@ def archive(task_id: str, u=Depends(approved), db=Depends(get_db)):
     r = db.get(Receptor, t.receptor_id)
     z = zipstream.ZipStream(compress_type=zipstream.ZIP_DEFLATED)
     z.add((x.encode('utf-8') for x in score_rows(t.id)), 'scores.csv')
-    z.add(json.dumps(dict(job=task_json(t), exported_at=now().isoformat(), preparation=r.report), default=str, ensure_ascii=False), 'manifest.json')
+    manifest = dict(job=task_json(t), exported_at=now().isoformat(), preparation=r.report)
+    summary = gnina_summary(db, t) if t.kind == 'screen' else None
+    if summary and (summary['scored'] or summary['failed'] or summary['pending']):
+        details = db.scalar(select(GninaScore.details).where(GninaScore.task_id == t.id, GninaScore.status == 'succeeded').limit(1)) or {}
+        manifest['gnina'] = dict(version=details.get('gnina_version'), binary_sha256=details.get('binary_sha256'),
+                                 top_n=summary['top_n'], scored=summary['scored'])
+    z.add(json.dumps(manifest, default=str, ensure_ascii=False), 'manifest.json')
     for path in storage.receptor_dir(r.owner_id, r.id).glob('*'):
         if path.is_file():
             z.add_path(path, 'receptor/'+path.name)
