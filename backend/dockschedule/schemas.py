@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Register(BaseModel):
@@ -68,7 +68,14 @@ class ResourceSettings(BaseModel):
     storage_limit_gb: int = Field(ge=1, le=100000)
     user_storage_limit_gb: int = Field(ge=1, le=100000)
     retention_days: int = Field(ge=0, le=3650)
+    gnina_top_n: int = Field(default=1000, ge=0, le=100000)
     paused: bool
+
+    @model_validator(mode='after')
+    def gnina_within_library_limit(self):
+        if self.gnina_top_n > self.max_compounds:
+            raise ValueError('GNINA 재채점 개수는 library 최대 화합물 수 이하여야 합니다.')
+        return self
 
 
 class UserUpdate(BaseModel):
