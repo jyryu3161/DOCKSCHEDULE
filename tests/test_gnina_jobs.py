@@ -188,6 +188,18 @@ def test_choose_tasks_moves_gnina_to_students_earliest_position():
     assert [t.name for t, _ in choose_tasks(waiting, active, users, values, list(range(16)))] == ['b-gnina', 'c-gnina']
 
 
+def test_choose_tasks_auto_gnina_takes_the_freed_slot_before_other_students():
+    values = dict(cpu_budget=64, max_students=1, default_cpus=4, paused=False)
+    users = {i: NS(status='approved', cpu_override=None) for i in (1, 2)}
+    mk = lambda name, owner, kind, auto=None: NS(name=name, owner_id=owner, kind=kind, cancel_requested=False,
+                                                 parameters={'auto': auto} if auto is not None else {})
+    waiting = [mk('a-screen', 1, 'screen'), mk('b-screen', 2, 'screen'), mk('b-gnina', 2, 'gnina', True)]
+    assert [t.name for t, _ in choose_tasks(waiting, [], users, values, list(range(8)))] == ['b-gnina']
+    # a manual resume keeps the normal queue order
+    waiting = [mk('a-screen', 1, 'screen'), mk('b-screen', 2, 'screen'), mk('b-gnina', 2, 'gnina', False)]
+    assert [t.name for t, _ in choose_tasks(waiting, [], users, values, list(range(8)))] == ['a-screen']
+
+
 def test_choose_tasks_gnina_cpu_rule_and_disjoint():
     values = dict(cpu_budget=64, max_students=8, default_cpus=4, paused=False)
     users = {1: NS(status='approved', cpu_override=None), 2: NS(status='approved', cpu_override=6)}

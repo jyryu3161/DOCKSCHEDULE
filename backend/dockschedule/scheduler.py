@@ -43,6 +43,10 @@ def choose_tasks(waiting, active, users, values, available):
             ordered.extend(gnina.get(task.owner_id, []))
         if task.kind != 'gnina':
             ordered.append(task)
+    # An auto-registered gnina task finishes its screening's set: it takes the slot that screening just freed
+    # before any other student's waiting task. Manually requested gnina tasks keep the normal order.
+    auto = lambda t: t.kind == 'gnina' and (getattr(t, 'parameters', None) or {}).get('auto')
+    ordered = [t for t in ordered if auto(t)] + [t for t in ordered if not auto(t)]
     for task in ordered:
         user = users.get(task.owner_id)
         if task.cancel_requested or user is None or user.status != 'approved' or task.owner_id in active_users:
