@@ -125,6 +125,21 @@ class CompoundAnalysis(Base):
     error: Mapped[str | None] = mapped_column(Text)
 
 
+class GninaScore(Base):
+    __tablename__ = 'gnina_scores'
+    __table_args__ = (Index('gnina_queue', 'task_id', 'status'),)
+    compound_id: Mapped[int] = mapped_column(ForeignKey('compounds.id', ondelete='CASCADE'), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey('tasks.id', ondelete='CASCADE'))  # source screening
+    job_id: Mapped[str] = mapped_column(ForeignKey('tasks.id', ondelete='CASCADE'))  # gnina task
+    status: Mapped[str] = mapped_column(String(20), default='pending')  # pending|succeeded|failed
+    error: Mapped[str | None] = mapped_column(Text)
+    cnn_score: Mapped[float | None] = mapped_column(Float)
+    cnn_affinity: Mapped[float | None] = mapped_column(Float)
+    cnn_vs: Mapped[float | None] = mapped_column(Float)  # cnn_score * cnn_affinity
+    gnina_vina: Mapped[float | None] = mapped_column(Float)  # GNINA's own Vina-type score (kcal/mol), not Compound.affinity
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
 class InteractionHit(Base):
     __tablename__ = 'interaction_hits'
     __table_args__ = (Index('interaction_lookup', 'task_id', 'residue_key', 'kind', 'compound_id'),)
