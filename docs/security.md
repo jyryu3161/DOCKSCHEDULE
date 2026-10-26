@@ -37,7 +37,7 @@
 | `rejected`/`suspended` | 없음 | 로그인 자체가 막힘, 기존 세션은 삭제됨 |
 | `admin` | 모든 학생의 자료 조회·취소·재시도·삭제, 계정 승인/거절/정지, CPU 개별 설정, 비밀번호 초기화, 전체 설정, 저장 공간 현황 | 관리자 계정의 정지·거절 (400) |
 
-- 소유권 검사는 모든 자료 API(업로드, receptor, 작업, 화합물 pose, 점수·ZIP·CSV, 상호작용 인덱스·후보·pose 분석)에 같은 방식(`owned`)으로 적용한다. 새 엔드포인트도 반드시 같은 검사를 거쳐야 한다.
+- 소유권 검사는 모든 자료 API(업로드, receptor, 작업, 화합물 pose, 점수·ZIP·CSV, 상호작용 인덱스·후보·pose 분석, GNINA 이어서 계산)에 같은 방식(`owned`)으로 적용한다. 새 엔드포인트도 반드시 같은 검사를 거쳐야 한다.
 - 관리자가 학생 작업에 대해 분석을 요청하면 용량 한도는 작업 소유자 기준으로 검사한다.
 - 상태 변경 요청(POST/PATCH/PUT/DELETE)은 헤더 `X-DS-Request: 1`이 있어야 하고, `Origin`이 있으면 요청 `Host`와 같아야 한다(CSRF 방어). 아니면 403.
 - 응답에는 `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`를 붙인다.
@@ -49,7 +49,7 @@
 - 계정 변경(`update_user`: 상태·CPU 개별 설정), 비밀번호 초기화(`reset_password`)
 - 설정 변경(`settings`, 전체 값 포함)
 - 작업 제출(`submit`), 취소(`cancel`), 재시도(`retry`), 삭제(`delete_job`)
-- 라이브러리 상호작용 분석 요청(`analyze_library`)
+- 라이브러리 상호작용 분석 요청(`analyze_library`), GNINA 이어서 계산 요청(`gnina`)
 - 보존 기간에 의한 자동 삭제(`retention_delete`, 행위자 없음)
 
 로그인, 가입, 파일 업로드, 전처리 요청, 조회·다운로드는 기록하지 않는다(의도한 범위다). 관리자 계정은 `bootstrap`이 만드는 `admin` 하나뿐이고 역할을 올리는 API가 없으므로 모든 관리 행위의 행위자는 이 공유 계정이다. 조교·그룹·학생 간 공유 같은 중간 권한은 없다.

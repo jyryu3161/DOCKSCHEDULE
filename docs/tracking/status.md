@@ -1,6 +1,6 @@
 # 진행 현황
 
-기준일 2026-10-26. 근거: Python 테스트 57개 통과(`OPENMM_CPU_THREADS=2 OPENBLAS_NUM_THREADS=1 pytest -q`, SQLite), frontend `npm run build` 통과. 이 날짜에 Playwright·운영 서버 스크립트(`service_check`, `resilience_check` 등)는 다시 실행하지 않았다.
+기준일 2026-10-26. 근거: Python 테스트 129개 통과(1개 건너뜀: 실제 GNINA 바이너리)(`OPENMM_CPU_THREADS=2 OPENBLAS_NUM_THREADS=1 pytest -q`, SQLite), frontend `npm run build` 통과. 이 날짜에 Playwright·운영 서버 스크립트(`service_check`, `resilience_check` 등)는 다시 실행하지 않았다.
 
 ## 구현됨
 
@@ -13,7 +13,11 @@
 - Pose 상호작용(수소결합·π·할로젠·염다리) 판정, 원자 번호 보존, 캐시 무효화, API 권한·오류.
 - Library 상호작용 인덱스: 잔기·타입 any/all 후보 검색, 페이지네이션, 후보 CSV, 재시도 시 무효화, 취소 후 이어하기, CPU 1개 예약. migration `b63d14a829f0` 업그레이드 시 기존 데이터 보존(SQLite).
 
+- GNINA 재점수화(상위 N 자동 선정·`gnina` 작업·순위·내보내기·migration): 가짜 GNINA 바이너리로 선정·등록·스케줄링·취소·복구·순위·API 권한·내보내기를 검증(`tests/test_gnina*.py`).
+
 **구현됨, 자동 테스트 없음 (동작은 운영 서버 스크립트·수동 확인에 의존)**
+- 실제 GNINA 바이너리 실행: 이미지 빌드·40개 pose 측정은 했으나(`tests/fixtures/gnina_benchmark.md`) 호스트(glibc 2.31)에서는 실행되지 않아 자동 테스트는 가짜 바이너리만 쓴다. 이 변경의 운영 서버 통합(`scripts/service_check.py`의 gnina 흐름)과 PostgreSQL 확인은 아직 하지 않았다.
+- GNINA 화면(열·정렬·가중치·이어서 계산): Playwright(`e2e/gnina.spec.ts`, API mock)로 확인했다.
 - 계정 정지 시 대기·실행 중 작업에 취소 요청 설정, 소수성·양이온–π 접촉 판정(후보 검색 테스트는 합성 데이터만 사용).
 - 화면(UI): TypeScript 빌드만 통과를 확인했다. 브라우저 시나리오(Playwright)는 마지막 기록상 통과했으나 이번에 재실행하지 않았다.
 - 관리자 비밀번호 초기화, 설정 변경 API의 CPU 한도 교차 검증, 학생별 대기 작업 수 한도(`max_pending_per_user`), 업로드 크기 한도(413), 로그인·가입 횟수 제한, 비밀번호 변경.
@@ -24,7 +28,6 @@
 ## 남은 일 (우선순위·의존 순)
 
 1. 학생이 본인의 업로드(PDB·library)와 전처리 단백질(receptor)을 삭제하는 기능. 현재는 screening 작업만 삭제할 수 있고 원본 업로드와 receptor를 지우는 수단은 학생·관리자 모두에게 없어 학생별 저장 한도에 계속 누적된다. 구현 시 삭제 대상을 쓰고 있는 작업(대기·실행 중이거나 결과가 참조하는 receptor)의 처리 규칙, 용량 집계(`artifact_bytes`, 업로드 크기) 갱신, 감사 기록 추가를 함께 정해야 한다.
-2. QuickVina docking 이후 GNINA로 pose를 재점수화(rescoring)하는 기능. 상세 범위(어떤 pose에, 어떤 점수를, 어디에 저장·표시할지)는 아직 정해지지 않았다.
 
 ## 막힌 것
 

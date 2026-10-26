@@ -34,6 +34,7 @@ python3 scripts/install.py
 ```bash
 uv sync
 uv run python scripts/download-qvina.py          # tools/qvina2.1 (체크섬 검증)
+uv run python scripts/download-gnina.py          # tools/gnina (약 2GB, 체크섬 검증; 호스트 glibc ≥ 2.35와 cuDNN이 없으면 호스트에서는 실행되지 않고 이미지 안에서만 실행됨)
 npm --prefix frontend ci
 ```
 
@@ -88,3 +89,11 @@ CONFIRM_RESTORE=yes scripts/restore.sh /안전한/백업/경로   # 현재 DB를
 2. api가 `alembic upgrade head`를 끝내고 healthy해진 뒤 새 scheduler가 시작된다. 기존 worker는 정상 종료 후 체크포인트부터 이어진다.
 3. 이전 이미지로 되돌릴 때는 진행 중인 상호작용 분석을 취소하고 `interactions` 작업이 큐에 없는지 확인한다.
 4. 배포 때 학생 작업이나 볼륨을 초기화하지 않는다.
+
+## GNINA
+
+- GNINA는 이미지 안에서만 실행된다(공식 정적 바이너리는 glibc ≥ 2.35와 `libcudnn.so.9`가 필요하고 CPU 모드에서도 CUDA 계열 라이브러리를 적재한다). Dockerfile이 SHA256을 검증해 `tools/gnina`에 넣고 고정 버전 NVIDIA wheel을 `/opt/gnina-libs`에 설치해 `ldconfig`에 등록한다. 가시 GPU 없음(`CUDA_VISIBLE_DEVICES=`).
+- 이미지가 커진다(약 1.1 GB → 약 6.3 GB, 첫 빌드 약 25분). 업그레이드 후 `docker compose build`가 끝날 때까지 기존 서비스는 건드리지 않는다.
+- 작업 시작 때 `gnina.check_binary`가 SHA256과 `gnina --version`을 확인하고 실패하면 그 `gnina` 작업만 `failed`(오류 메시지에 사유)가 된다. 다른 작업·api에는 영향이 없다.
+- 관리자 설정 `gnina_top_n`(기본 1000, 0이면 자동 계산 끔)은 새로 만들어지는 작업부터 적용된다.
+- 배포 순서는 기존과 같다(api가 migration `c4e8a1d57f23`을 실행한 뒤 scheduler 시작).

@@ -7,10 +7,13 @@ api(FastAPI), scheduler(디스패처), runner(작업 실행), 화학 계산(전�
 | --- | --- |
 | `api.py`, `schemas.py`, `security.py` | HTTP 엔드포인트, 입력 스키마, 인증·소유권(`approved`, `admin`, `owned`), 최초 설정·관리자 생성(`bootstrap`) |
 | `scheduler.py` | `choose_tasks`(순수 선택 로직), 예약·worker 기동, `reap`/`recover`/`cleanup` |
-| `runner.py` | 작업 실행(`run_task`): `prepare` / `screen` / `interactions` 분기, 화합물 루프, 취소·시간 제한 |
+| `runner.py` | 작업 실행(`run_task`): `prepare` / `screen` / `interactions` / `gnina` 분기, 화합물 루프, 취소·시간 제한 |
 | `chemistry.py` | `prepare_receptor`, `normalize_smiles`, `dock_compound`, QuickVina 해시·원자형 검사 |
 | `structure.py` | PDB 파싱(`inspect_pdb`, `selected_pdb`), 잔기 키 |
 | `library.py` | CSV/TSV 읽기·미리보기·화합물 행 생성 |
+| `gnina.py` | GNINA `--score_only` 점수화(수소 추가·묶음·실패 격리·취소), 바이너리 SHA256 점검. worker 안에서만 import |
+| `gnina_rank.py` | 순위 계산(평균 순위·합의 순위). 화학 import 없음, api가 import해도 된다 |
+| `gnina_jobs.py` | GNINA 대상 선정·`gnina` 작업 생성·screen 종료 시 자동 등록(화학 import 없음) |
 | `interactions.py` | ProLIF 단일 pose 분석(단독 실행 가능한 모듈) |
 | `interaction_service.py` | api용 pose 분석 하위 프로세스 호출(잠금·캐시·45초) |
 | `interaction_index.py`, `interaction_worker.py` | library 전체 분석의 쿼리 로직 / 예약된 worker 루프 |
@@ -24,7 +27,7 @@ api(FastAPI), scheduler(디스패처), runner(작업 실행), 화학 계산(전�
 - 건드리지 말 것: `tools/qvina2.1`(고정 해시 바이너리), `third_party/`, `storage/`(런타임 데이터).
 
 ## 불변 조건
-- api 프로세스는 `chemistry`, `interactions`, RDKit, OpenMM, Open Babel을 import하지 않는다(`interaction_service`는 하위 프로세스로만 호출).
+- api 프로세스는 `chemistry`, `interactions`, `gnina`, RDKit, OpenMM, Open Babel을 import하지 않는다(`interaction_service`는 하위 프로세스로만 호출).
 - `chemistry.py`는 `runner`가 만든 CPU 고정 worker 안에서만 import한다.
 - 모든 자료 조회·변경 엔드포인트는 `owned(obj, user)`를 거친다. 남의 자료는 404.
 - scheduler·runner의 `Task` 상태 변경은 `with_for_update`로 행을 잠그고 `task.run_id == run_id` 및 `cancel_requested`를 확인한 뒤에 한다. api의 취소는 잠금 없이 `cancel_requested`만 세우고 종료 처리는 scheduler·runner에 맡긴다. 사용자·작업을 함께 잠그면 순서는 사용자 → 작업.
