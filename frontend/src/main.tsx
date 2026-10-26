@@ -1434,13 +1434,14 @@ function NewJob() {
   );
 }
 
-function GninaPanel({ g, onResume }: { taskId: string; g: NonNullable<Job["gnina"]>; onResume: () => void }) {
+function GninaPanel({ g, onResume, onCancel }: { taskId: string; g: NonNullable<Job["gnina"]>; onResume: () => void; onCancel: () => void }) {
   return (
     <section className="panel padded">
       <div className="panel-heading">
         <h2>GNINA 재점수화</h2>
         <div className="actions">
           {g.can_resume && <button className="secondary small" onClick={onResume}>GNINA 이어서 계산</button>}
+          {g.active && <button className="secondary small" onClick={onCancel}>GNINA 계산 취소</button>}
         </div>
       </div>
       <p className="hint">
@@ -1457,7 +1458,7 @@ function GninaPanel({ g, onResume }: { taskId: string; g: NonNullable<Job["gnina
 function GninaCells({ g, activeStatus }: { g: any; activeStatus: string | null }) {
   if (!g) return <td colSpan={4} className="muted"><small>미계산</small></td>;
   if (g.status === "failed") return <td colSpan={4} title={g.error || ""}><small>GNINA 실패</small></td>;
-  if (g.status !== "succeeded") return <td colSpan={4} className="muted"><small>{activeStatus === "running" || activeStatus === "reserved" ? "계산 중" : "대기"}</small></td>;
+  if (g.status !== "succeeded") return <td colSpan={4} className="muted"><small>{activeStatus === "running" || activeStatus === "reserved" ? "계산 중" : activeStatus === "queued" ? "대기" : "미계산"}</small></td>;
   return (
     <>
       <td className="score">{g.rank.consensus}</td>
@@ -1601,7 +1602,9 @@ function JobDetail({ id }: { id: string }) {
           <LibraryInteractions key={id} taskId={id} query={interactionQuery} onChange={(query) => {
             setInteractionQuery(query); setPage(1); setChosen(null);
           }} />
-          {showGnina && <GninaPanel taskId={id} g={t.gnina!} onResume={() => action("gnina")} />}
+          {showGnina && <GninaPanel taskId={id} g={t.gnina!} onResume={() => action("gnina")} onCancel={async () => {
+            try { await post(`/jobs/${t.gnina!.active}/cancel`); job.reload(); results.reload(); } catch (e) { setError((e as Error).message); }
+          }} />}
           <div className="results-grid">
             <section className="panel result-list">
               <div className="panel-heading result-heading">

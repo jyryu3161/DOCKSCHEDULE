@@ -37,11 +37,15 @@ def version(binary):
 
 def check_binary(path, expected_sha256=GNINA_SHA256):
     path = Path(path)
+    sha = hashlib.sha256()
     try:
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        with path.open('rb') as f:
+            # The binary is ~2 GB: hash in blocks, never read it whole.
+            for block in iter(lambda: f.read(1 << 20), b''):
+                sha.update(block)
     except OSError:
         raise ValueError('GNINA 바이너리를 읽을 수 없습니다.')
-    if digest != expected_sha256:
+    if sha.hexdigest() != expected_sha256:
         raise ValueError('GNINA 바이너리 체크섬이 검증된 버전과 다릅니다.')
     return version(path)
 
