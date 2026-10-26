@@ -1434,16 +1434,54 @@ function NewJob() {
   );
 }
 
+function GninaPanel({ g, onResume }: { taskId: string; g: NonNullable<Job["gnina"]>; onResume: () => void }) {
+  return (
+    <section className="panel padded">
+      <div className="panel-heading">
+        <h2>GNINA 재점수화</h2>
+        <div className="actions">
+          {g.can_resume && <button className="secondary small" onClick={onResume}>GNINA 이어서 계산</button>}
+        </div>
+      </div>
+      <p className="hint">
+        QuickVina affinity 상위 {g.top_n ?? "—"}개의 pose를 GNINA(CNN)로 다시 점수화합니다. 완료 {g.scored.toLocaleString()}개
+        {g.failed > 0 && <> · 실패 {g.failed.toLocaleString()}개</>}
+        {g.active && <> · {g.status === "running" || g.status === "reserved" ? "계산 중" : "대기 중"}</>}
+        . {g.active ? "순위는 현재까지 계산된 결과 기준입니다. " : ""}
+        합의 순위는 QuickVina 순위와 CNNaffinity 순위의 가중 평균(낮을수록 좋음)입니다. 모두 교육용 계산 점수이며 실험 친화도가 아닙니다.
+      </p>
+    </section>
+  );
+}
+
+function GninaCells({ g, activeStatus }: { g: any; activeStatus: string | null }) {
+  if (!g) return <td colSpan={4} className="muted"><small>미계산</small></td>;
+  if (g.status === "failed") return <td colSpan={4} title={g.error || ""}><small>GNINA 실패</small></td>;
+  if (g.status !== "succeeded") return <td colSpan={4} className="muted"><small>{activeStatus === "running" || activeStatus === "reserved" ? "계산 중" : "대기"}</small></td>;
+  return (
+    <>
+      <td className="score">{g.rank.consensus}</td>
+      <td className="score">{g.cnn_score.toFixed(3)}</td>
+      <td className="score">{g.cnn_affinity.toFixed(2)}</td>
+      <td className="score">{g.cnn_vs.toFixed(3)}</td>
+    </>
+  );
+}
+
 function JobDetail({ id }: { id: string }) {
   const job = useLoad<Job>("/jobs/" + id, 3000),
     [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
     [status, setStatus] = useState(""),
     [interactionQuery, setInteractionQuery] = useState(""),
+    [sort, setSort] = useState("affinity"),
+    [weight, setWeight] = useState(0.5),
+    [minCnn, setMinCnn] = useState(""),
     [chosen, setChosen] = useState<any>(null),
     [error, setError] = useState("");
+  const gninaQuery = `sort=${sort}&w=${weight}${minCnn !== "" ? `&min_cnn_score=${minCnn}` : ""}`;
   const results = useLoad(
-      `/jobs/${id}/results?page=${page}&search=${encodeURIComponent(search)}&status=${status}&${interactionQuery}`,
+      `/jobs/${id}/results?page=${page}&search=${encodeURIComponent(search)}&status=${status}&${gninaQuery}&${interactionQuery}`,
       4000,
     ),
     t = job.data;
@@ -1466,6 +1504,7 @@ function JobDetail({ id }: { id: string }) {
   const finished = ["completed", "partial", "failed", "cancelled"].includes(
     t.status,
   );
+  const showGnina = !!t.gnina && (t.gnina.scored > 0 || t.gnina.failed > 0 || t.gnina.pending > 0 || !!t.gnina.active || t.gnina.can_resume);
   if (t.kind === "interactions") return <section className="panel form-panel">
     <h1>{t.name}</h1><Badge status={t.status} /><p>{t.completed + t.failed}/{t.total}개 처리</p>
     <button className="primary" onClick={() => go(`job/${t.source_task_id}`)}>원본 결과에서 후보 찾기</button>
@@ -1562,6 +1601,7 @@ function JobDetail({ id }: { id: string }) {
           <LibraryInteractions key={id} taskId={id} query={interactionQuery} onChange={(query) => {
             setInteractionQuery(query); setPage(1); setChosen(null);
           }} />
+          {showGnina && <GninaPanel taskId={id} g={t.gnina!} onResume={() => action("gnina")} />}
           <div className="results-grid">
             <section className="panel result-list">
               <div className="panel-heading result-heading">
@@ -1569,14 +1609,14 @@ function JobDetail({ id }: { id: string }) {
                 <div className="actions">
                   <a
                     className="secondary small"
-                    href={interactionQuery ? `/api/jobs/${id}/interaction-candidates.csv?${interactionQuery}&search=${encodeURIComponent(search)}&status=${status}` : `/api/jobs/${id}/scores?format=csv`}
+                    href={interactionQuery ? `/api/jobs/${id}/interaction-candidates.csv?${interactionQuery}&search=${encodeURIComponent(search)}&status=${status}&w=${weight}` : `/api/jobs/${id}/scores?format=csv&w=${weight}`}
                   >
                     <ArrowDownToLine size={14} />
                     {interactionQuery ? "후보 CSV" : "CSV"}
                   </a>
                   <a
                     className="secondary small"
-                    href={`/api/jobs/${id}/scores?format=tsv`}
+                    href={`/api/jobs/${id}/scores?format=tsv&w=${weight}`}
                   >
                     전체 TSV
                   </a>
@@ -1616,6 +1656,35 @@ function JobDetail({ id }: { id: string }) {
                     ),
                   )}
                 </select>
+                {showGnina && (
+                  <>
+                    <select
+                      aria-label="정렬"
+                      value={sort}
+                      onChange={(e) => { setSort(e.target.value); setPage(1); }}
+                    >
+                      <option value="affinity">QuickVina affinity 순</option>
+                      <option value="consensus">합의 순위 순</option>
+                      <option value="cnn_affinity">CNNaffinity 순</option>
+                      <option value="cnn_score">CNNscore 순</option>
+                      <option value="cnn_vs">CNN_VS 순</option>
+                    </select>
+                    <label className="muted" title="합의 순위 = 가중치 × CNNaffinity 순위 + (1 − 가중치) × QuickVina 순위">
+                      CNNaffinity 가중치 {weight.toFixed(2)}
+                      <input type="range" min={0} max={1} step={0.05} value={weight}
+                        onChange={(e) => { setWeight(+e.target.value); setPage(1); }} />
+                    </label>
+                    <label className="muted">
+                      최소 CNNscore
+                      <input type="number" min={0} max={1} step={0.05} value={minCnn} placeholder="없음"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setMinCnn(v === "" ? "" : String(Math.min(1, Math.max(0, +v))));
+                          setPage(1);
+                        }} />
+                    </label>
+                  </>
+                )}
               </div>
               <div className="table-wrap">
                 <table>
@@ -1625,6 +1694,14 @@ function JobDetail({ id }: { id: string }) {
                       <th>
                         Affinity <small>kcal/mol</small>
                       </th>
+                      {showGnina && (
+                        <>
+                          <th>합의 순위</th>
+                          <th>CNNscore</th>
+                          <th>CNNaffinity</th>
+                          <th>CNN_VS</th>
+                        </>
+                      )}
                       <th>상태</th>
                       {interactionQuery && <th>일치한 상호작용</th>}
                       <th />
@@ -1649,6 +1726,7 @@ function JobDetail({ id }: { id: string }) {
                         <td className="score">
                           {c.affinity?.toFixed(1) ?? "—"}
                         </td>
+                        {showGnina && <GninaCells g={c.gnina} activeStatus={t.gnina!.status} />}
                         <td>
                           <Badge status={c.status} />
                         </td>
@@ -1839,6 +1917,7 @@ function Admin() {
     ["storage_limit_gb", "전체 저장 공간 한도 (GB)"],
     ["user_storage_limit_gb", "학생별 저장 공간 한도 (GB)"],
     ["retention_days", "결과 보존 기간 (일, 0=자동 삭제 안 함)"],
+    ["gnina_top_n", "GNINA 재점수화 상위 화합물 수 (0=자동 계산 안 함)"],
   ];
   return (
     <>
@@ -2025,7 +2104,7 @@ function Admin() {
                       type="number"
                       required
                       min={
-                        k === "retention_days" || k === "max_retries" ? 0 : 1
+                        k === "retention_days" || k === "max_retries" || k === "gnina_top_n" ? 0 : 1
                       }
                       value={draft[k]}
                       onChange={(e) =>
