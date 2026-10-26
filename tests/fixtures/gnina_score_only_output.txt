@@ -1,0 +1,36 @@
+              _             
+             (_)            
+   __ _ _ __  _ _ __   __ _ 
+  / _` | '_ \| | '_ \ / _` |
+ | (_| | | | | | | | | (_| |
+  \__, |_| |_|_|_| |_|\__,_|
+   __/ |                    
+  |___/                     
+
+gnina v1.3.3 master:6fe1ce2   Built Jun 30 2026.
+gnina is based on smina and AutoDock Vina.
+Please cite appropriately.
+
+Commandline: /g/gnina --score_only --no_gpu --cpu 1 -r /in/receptor.pdb -l /in/poses3.sdf -o /out/sample3.sdf
+## Name gauss(o=0,_w=0.5,_c=8) gauss(o=3,_w=2,_c=8) repulsion(o=0,_c=8) hydrophobic(g=0.5,_b=1.5,_c=8) non_dir_h_bond(g=-0.7,_b=0,_c=8) num_tors_div
+Affinity: -6.50335 (kcal/mol)
+CNNscore: 0.03785 
+CNNaffinity: 3.85254
+CNNvariance: 0.85047
+Intramolecular energy: -0.46904
+Term values, before weighting:
+## pose_100 61.37487 1102.98926 0.71034 13.18320 0.49021 0.00000
+Affinity: -6.85050 (kcal/mol)
+CNNscore: 0.18090 
+CNNaffinity: 3.66572
+CNNvariance: 1.06712
+Intramolecular energy: -0.72108
+Term values, before weighting:
+## pose_101 69.97067 1014.85730 1.34400 15.66787 0.86682 0.00000
+Affinity: -6.39728 (kcal/mol)
+CNNscore: 0.31429 
+CNNaffinity: 4.34528
+CNNvariance: 0.32055
+Intramolecular energy: -0.51204
+Term values, before weighting:
+## pose_102 73.59988 1132.88477 2.23285 6.51096 2.47728 0.00000
