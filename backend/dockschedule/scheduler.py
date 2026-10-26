@@ -31,7 +31,19 @@ def choose_tasks(waiting, active, users, values, available):
     if values['paused']:
         return []
     choices = []
+    # A student's gnina tasks go to the position of that student's earliest waiting task; other students keep their order.
+    gnina = {}
     for task in waiting:
+        if task.kind == 'gnina':
+            gnina.setdefault(task.owner_id, []).append(task)
+    ordered, seen = [], set()
+    for task in waiting:
+        if task.owner_id not in seen:
+            seen.add(task.owner_id)
+            ordered.extend(gnina.get(task.owner_id, []))
+        if task.kind != 'gnina':
+            ordered.append(task)
+    for task in ordered:
         user = users.get(task.owner_id)
         if task.cancel_requested or user is None or user.status != 'approved' or task.owner_id in active_users:
             continue

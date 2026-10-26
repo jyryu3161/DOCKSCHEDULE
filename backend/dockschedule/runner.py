@@ -11,8 +11,9 @@ from pathlib import Path
 from sqlalchemy import func, select, update
 from .config import config
 from .db import transaction
-from .models import Compound, Receptor, Settings, Task, Upload, now
+from .models import Compound, GninaScore, Receptor, Settings, Task, Upload, now
 from .processes import stop_tree
+from .gnina_jobs import maybe_queue_after_screen
 from .storage import account_compound, account_task, check_capacity, compound_dir, receptor_dir, task_dir
 
 
@@ -27,6 +28,8 @@ def _compound_process(smiles, receptor, output, parameters, cpus, binary):
     temporary = path.with_suffix('.tmp')
     temporary.write_text(json.dumps(result, ensure_ascii=False))
     temporary.replace(path)
+
+GNINA_SHA256_OVERRIDE = None  # tests only: expected hash of a fake GNINA binary
 
 
 def _active(task_id, run_id):
@@ -68,6 +71,10 @@ def run_task(task_id, run_id):
         if kind == 'interactions':
             from .interaction_worker import run_index
             run_index(task_id, run_id, owner, source_task_id, receptor_dir(receptor_owner, receptor_id)/'receptor.pdb')
+            return
+
+        if kind == 'gnina':
+            _run_gnina(task_id, run_id, owner, source_task_id, receptor_dir(receptor_owner, receptor_id)/'receptor.pdb', cpus)
             return
 
         # Preload chemistry in the job process. Forked per-compound processes isolate
@@ -141,6 +148,13 @@ def run_task(task_id, run_id):
             partial = db.scalar(select(func.count()).select_from(Compound).where(Compound.task_id == task_id, Compound.status == 'partial'))
             task.status = 'partial' if task.completed and (task.failed or partial) else 'completed' if task.completed else 'failed'
             task.finished_at = now()
+            if kind == 'screen':
+                # A failure to queue GNINA must not turn a finished screening into a failed one.
+                try:
+                    with db.begin_nested():
+                        maybe_queue_after_screen(db, task)
+                except Exception:
+                    traceback.print_exc()
     except Exception as exc:
         traceback.print_exc()
         with transaction() as db:
@@ -151,6 +165,55 @@ def run_task(task_id, run_id):
                 if kind == 'prepare':
                     receptor = db.get(Receptor, receptor_id)
                     receptor.status, receptor.report = 'failed', {'error': str(exc)}
+
+
+def _run_gnina(task_id, run_id, owner, source_task_id, receptor, cpus):
+    """Rescore the pending GnninaScore rows of this job; DB writes only under the Task lock and run_id check."""
+    from . import gnina
+    binary = config().gnina_binary
+    expected = GNINA_SHA256_OVERRIDE or gnina.GNINA_SHA256
+    version = gnina.check_binary(binary, expected_sha256=expected)
+    with transaction() as db:
+        timeout = db.get(Settings, 1).values.get('compound_timeout', 600)
+    details = dict(gnina_version=version, binary_sha256=expected, options='score_only', cpus=cpus)
+    workdir = task_dir(owner, task_id)
+    workdir.mkdir(parents=True, exist_ok=True)
+
+    def save(compound_id, result):
+        # Called from gnina worker threads: one short session per result.
+        with transaction() as db:
+            task = db.get(Task, task_id, with_for_update=True)
+            if task.run_id != run_id or task.cancel_requested:
+                return
+            row = db.get(GninaScore, compound_id)
+            if row is None or row.job_id != task_id or row.status != 'pending':
+                return
+            for field in ('status', 'error', 'cnn_score', 'cnn_affinity', 'cnn_vs', 'gnina_vina'):
+                setattr(row, field, result[field])
+            row.details = details
+            if row.status == 'succeeded':
+                task.completed += 1
+            else:
+                task.failed += 1
+            task.heartbeat = now()
+
+    while _active(task_id, run_id):
+        with transaction() as db:
+            ids = list(db.scalars(select(GninaScore.compound_id).where(GninaScore.job_id == task_id, GninaScore.status == 'pending').order_by(
+                GninaScore.compound_id).limit(gnina.BATCH_SIZE*cpus*4)))
+        if not ids:
+            break
+        items = [(i, compound_dir(owner, source_task_id, i)/'best.sdf') for i in ids]
+        done = gnina.score_batch(receptor, items, cpus, binary, workdir, timeout,
+                                 should_stop=lambda: not _active(task_id, run_id), on_result=save)
+        if len(done) < len(items) and _active(task_id, run_id):
+            raise RuntimeError('GNINA 재채점이 일부 화합물을 처리하지 않고 종료했습니다.')
+    with transaction() as db:
+        task = db.get(Task, task_id, with_for_update=True)
+        if task.run_id != run_id or task.cancel_requested:
+            return
+        task.status = 'partial' if task.completed and task.failed else 'completed' if task.completed else 'failed'
+        task.finished_at = now()
 
 
 if __name__ == '__main__':
