@@ -59,10 +59,10 @@ def test_consensus_sort_matches_rank_helper_with_ties_and_non_members_last(admin
         assert r['gnina']['rank']['vina'] == o['rank']['vina'] and r['gnina']['rank']['cnn_affinity'] == o['rank']['cnn_affinity']
 
 
-def test_default_weight_is_half_and_rows_two_three_tie_by_row_number(admin_client):
+def test_default_weight_is_cnn_affinity_only_and_rows_two_three_tie_by_row_number(admin_client):
     sid, _, _ = seeded()
-    assert [r['row_number'] for r in rows(admin_client, sid, 'sort=consensus')['rows']] == [r['row_number'] for r in rows(admin_client, sid, 'sort=consensus&w=0.5')['rows']]
-    order = [r['row_number'] for r in rows(admin_client, sid, 'sort=consensus&w=0.5')['rows']]
+    assert [r['row_number'] for r in rows(admin_client, sid, 'sort=consensus')['rows']] == [r['row_number'] for r in rows(admin_client, sid, 'sort=consensus&w=1')['rows']]
+    order = [r['row_number'] for r in rows(admin_client, sid, 'sort=consensus&w=1')['rows']]
     assert order.index(2) < order.index(3)
 
 
@@ -108,7 +108,7 @@ def test_filters_choose_rows_but_never_change_ranks(admin_client):
     sid, _, _ = seeded()
     full = {r['row_number']: r['gnina']['rank'] for r in rows(admin_client, sid, 'sort=consensus')['rows'] if r['gnina'] and r['gnina']['rank']['consensus']}
     only = rows(admin_client, sid, 'sort=consensus&min_cnn_score=0.7')
-    assert [r['row_number'] for r in only['rows']] == [r['row_number'] for r in expected_rows(.5) if r['row_number'] in (2, 3, 4)]
+    assert [r['row_number'] for r in only['rows']] == [r['row_number'] for r in expected_rows(1) if r["row_number"] in (2, 3, 4)]
     assert only['total'] == 3
     assert all(r['gnina']['rank'] == full[r['row_number']] for r in only['rows'])
     searched = rows(admin_client, sid, 'sort=consensus&search=c4')

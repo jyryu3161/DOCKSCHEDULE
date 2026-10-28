@@ -1449,7 +1449,7 @@ function GninaPanel({ g, onResume, onCancel }: { taskId: string; g: NonNullable<
         {g.failed > 0 && <> · 실패 {g.failed.toLocaleString()}개</>}
         {g.active && <> · {g.status === "running" || g.status === "reserved" ? "계산 중" : "대기 중"}</>}
         . {g.active ? "순위는 현재까지 계산된 결과 기준입니다. " : ""}
-        합의 순위는 QuickVina 순위와 CNNaffinity 순위의 가중 평균(낮을수록 좋음)입니다. 모두 교육용 계산 점수이며 실험 친화도가 아닙니다.
+        기본 순위는 논문(Vu 등, JCIM 2025)처럼 GNINA CNNaffinity 하나로 매기며, 가중치를 낮추면 QuickVina 순위가 섞입니다(낮을수록 좋음). 모두 교육용 계산 점수이며 실험 친화도가 아닙니다.
       </p>
     </section>
   );
@@ -1475,11 +1475,12 @@ function JobDetail({ id }: { id: string }) {
     [search, setSearch] = useState(""),
     [status, setStatus] = useState(""),
     [interactionQuery, setInteractionQuery] = useState(""),
-    [sort, setSort] = useState("affinity"),
-    [weight, setWeight] = useState(0.5),
+    [sortChoice, setSort] = useState<string | null>(null),
+    [weight, setWeight] = useState(1),
     [minCnn, setMinCnn] = useState(""),
     [chosen, setChosen] = useState<any>(null),
     [error, setError] = useState("");
+  const sort = sortChoice ?? (job.data?.gnina && job.data.gnina.scored > 0 ? "cnn_affinity" : "affinity");
   const gninaQuery = `sort=${sort}&w=${weight}${minCnn !== "" ? `&min_cnn_score=${minCnn}` : ""}`;
   const results = useLoad(
       `/jobs/${id}/results?page=${page}&search=${encodeURIComponent(search)}&status=${status}&${gninaQuery}&${interactionQuery}`,
@@ -1666,9 +1667,9 @@ function JobDetail({ id }: { id: string }) {
                       value={sort}
                       onChange={(e) => { setSort(e.target.value); setPage(1); }}
                     >
+                      <option value="cnn_affinity">CNNaffinity 순</option>
                       <option value="affinity">QuickVina affinity 순</option>
                       <option value="consensus">합의 순위 순</option>
-                      <option value="cnn_affinity">CNNaffinity 순</option>
                       <option value="cnn_score">CNNscore 순</option>
                       <option value="cnn_vs">CNN_VS 순</option>
                     </select>

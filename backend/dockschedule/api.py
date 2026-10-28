@@ -511,7 +511,7 @@ def build_index(task_id: str, u=Depends(approved), db=Depends(get_db)):
 GNINA_SORTS = ('consensus', 'cnn_score', 'cnn_affinity', 'cnn_vs')
 
 
-def gnina_weight(w: float = 0.5):
+def gnina_weight(w: float = 1.0):
     if not 0 <= w <= 1:
         raise HTTPException(422, '가중치 w는 0 이상 1 이하여야 합니다.')
     return w
@@ -643,7 +643,7 @@ def consensus_ranks(task_id, w):
         return {i: r['consensus'] for i, r in gnina_ranks(db, task_id, w)[0].items()}
 
 
-def candidate_csv(task_id, filters, search, status, w=0.5):
+def candidate_csv(task_id, filters, search, status, w=1.0):
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     exported_at = now().isoformat()+'Z'
@@ -716,7 +716,7 @@ def pose(task_id: str, compound_id: int, format: str, u=Depends(approved), db=De
     return FileResponse(storage.compound_dir(t.owner_id, t.id, c.id)/('best.'+format), filename=f'row-{c.row_number}.{format}')
 
 
-def score_rows(task_id, separator=',', w=0.5):
+def score_rows(task_id, separator=',', w=1.0):
     buffer = io.StringIO()
     writer = csv.writer(buffer, delimiter=separator)
     exported_at = now().isoformat()+'Z'

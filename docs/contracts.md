@@ -66,7 +66,7 @@
 
 | 요청 | 입력 | 출력 | 오류 |
 | --- | --- | --- | --- |
-| `GET /jobs/{id}/results?page&page_size(1~200)&search&status&sort(affinity\|row\|consensus\|cnn_score\|cnn_affinity\|cnn_vs)&w(0~1, 기본 0.5)&min_cnn_score(0~1)` + 상호작용 필터 | — | `{total, page, rows:[{id,row_number,cid,smiles,normalized_smiles,status,affinity,error,elapsed,details,gnina}]}` (`affinity` 오름차순, 점수 없음은 뒤). `gnina`는 기록이 없으면 `null`, 있으면 `{status, cnn_score, cnn_affinity, cnn_vs, gnina_vina, error, rank:{vina, cnn_affinity, cnn_score, cnn_vs, consensus}}`(`succeeded`가 아니면 점수·순위가 null, 지표별 순위는 소수 가능, `consensus`는 정수) | 404, 422 필터·`w`·`min_cnn_score` 범위 |
+| `GET /jobs/{id}/results?page&page_size(1~200)&search&status&sort(affinity\|row\|consensus\|cnn_score\|cnn_affinity\|cnn_vs)&w(0~1, 기본 1)&min_cnn_score(0~1)` + 상호작용 필터 | — | `{total, page, rows:[{id,row_number,cid,smiles,normalized_smiles,status,affinity,error,elapsed,details,gnina}]}` (`affinity` 오름차순, 점수 없음은 뒤). `gnina`는 기록이 없으면 `null`, 있으면 `{status, cnn_score, cnn_affinity, cnn_vs, gnina_vina, error, rank:{vina, cnn_affinity, cnn_score, cnn_vs, consensus}}`(`succeeded`가 아니면 점수·순위가 null, 지표별 순위는 소수 가능, `consensus`는 정수) | 404, 422 필터·`w`·`min_cnn_score` 범위 |
 | `GET /jobs/{id}/compounds/{compound_id}/{sdf\|pdbqt}` | — | 최상 pose 파일 | 404 (성공/부분 성공만) |
 | `GET /jobs/{id}/scores?format=csv\|tsv&w` | — | 입력의 모든 행(실패·미완료 포함) 스트림. 끝에 GNINA 열 6개 추가 | 404, 422 |
 | `POST /jobs/{id}/gnina` (201) | — | 새 `gnina` 작업 객체(`parameters={top_n, auto:false}`) | 404, 403 CSRF, 409 screening 미종료·활성 gnina 작업 있음·`gnina_top_n`=0·계산할 대상 없음, 422 저장 공간 한도 |

@@ -47,7 +47,7 @@ test("GNINA columns, statuses, sort/weight/min score parameters and resume butto
 
   const request = page.waitForRequest((r) => r.url().includes("sort=consensus"));
   await page.getByLabel("정렬").selectOption("consensus");
-  expect(new URL((await request).url()).searchParams.get("w")).toBe("0.5");
+  expect(new URL((await request).url()).searchParams.get("w")).toBe("1");
   const weighted = page.waitForRequest((r) => r.url().includes("w=0.75"));
   await page.locator('input[type="range"]').fill("0.75");
   await weighted;
